@@ -1,0 +1,74 @@
+# Variant 2 — CPU/memory requests and limits
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-portal-resources
+  labels:
+    app: devops-portal
+    variant: resources
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devops-portal
+      variant: resources
+  template:
+    metadata:
+      labels:
+        app: devops-portal
+        variant: resources
+    spec:
+      containers:
+        - name: devops-portal
+          image: devops-portal:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            - name: DB_LINK
+              valueFrom:
+                secretKeyRef:
+                  name: devops-portal-secret
+                  key: DB_LINK
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: devops-portal-secret
+                  key: SECRET_KEY
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: devops-portal-secret
+                  key: ADMIN_PASSWORD
+            - name: DEVOPS_CAPTAIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: devops-portal-secret
+                  key: DEVOPS_CAPTAIN_PASSWORD
+            - name: LOG_LEVEL
+              value: INFO
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-portal-resources
+  labels:
+    app: devops-portal
+    variant: resources
+spec:
+  type: ClusterIP
+  selector:
+    app: devops-portal
+    variant: resources
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

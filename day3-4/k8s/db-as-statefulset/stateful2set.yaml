@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres
+  replicas: 2
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      initContainers:
+        - name: set-role
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              ORDINAL=$(echo $POD_NAME | awk -F'-' '{print $NF}')
+              if [ "$ORDINAL" = "0" ]; then
+                echo "writer" > /etc/role/role.txt
+              else
+                echo "reader" > /etc/role/role.txt
+              fi
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: role-vol
+              mountPath: /etc/role
+
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: role-vol
+              mountPath: /etc/role
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, postgres, -d, mydb]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [pg_isready, -U, postgres, -d, mydb]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+
+      volumes:
+        - name: role-vol
+          emptyDir: {}
+
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+        labels:
+          app: postgres
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+---
+# Headless service — required for StatefulSet DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      name: postgres
+---
+# Writer service — always hits postgres-0
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-writer
+spec:
+  selector:
+    app: postgres
+    statefulset.kubernetes.io/pod-name: postgres-0
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# Reader service — always hits postgres-1
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-reader
+spec:
+  selector:
+    app: postgres
+    statefulset.kubernetes.io/pod-name: postgres-1
+  ports:
+    - port: 5432
+      targetPort: 5432

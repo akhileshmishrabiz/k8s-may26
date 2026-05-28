@@ -1,0 +1,28 @@
+# Vertical Pod Autoscaler — recommends/adjusts CPU and memory for devops-portal
+# Install VPA controller first: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: devops-portal-vpa
+  labels:
+    app: devops-portal
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-portal
+  updatePolicy:
+    # Auto adjusts requests/limits; use "Off" to only get recommendations
+    updateMode: Auto
+  resourcePolicy:
+    containerPolicies:
+      - containerName: devops-portal
+        minAllowed:
+          cpu: 50m
+          memory: 128Mi
+        maxAllowed:
+          cpu: "1"
+          memory: 1Gi
+        controlledResources:
+          - cpu
+          - memory

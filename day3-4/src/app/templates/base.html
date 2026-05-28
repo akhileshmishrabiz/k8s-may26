@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} · DevOps Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="{% if current_user.is_authenticated %}{% if current_user.is_guest %}{{ url_for('retro.list_retros') }}{% else %}{{ url_for('main.dashboard') }}{% endif %}{% else %}{{ url_for('auth.login') }}{% endif %}" class="brand">
+                <span class="brand-title">DevOps Portal</span>
+                <span class="brand-subtitle">Ship · Retro · Learn</span>
+            </a>
+
+            {% if current_user.is_authenticated %}
+            <nav class="desktop-nav" aria-label="Main">
+                {% if not current_user.is_guest %}
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if current_endpoint == 'main.dashboard' %}active{% endif %}">Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('retro.list_retros') }}" class="nav-link {% if current_endpoint and current_endpoint.startswith('retro.') %}active{% endif %}">Retros</a>
+                {% if not current_user.is_guest %}
+                <a href="{{ url_for('teams.list_teams') }}" class="nav-link {% if current_endpoint and current_endpoint.startswith('teams.') %}active{% endif %}">Teams</a>
+                <a href="{{ url_for('tickets.list_tickets') }}" class="nav-link {% if current_endpoint and current_endpoint.startswith('tickets.') %}active{% endif %}">Tickets</a>
+                <div class="nav-dropdown">
+                    <button type="button" class="nav-link nav-dropdown-toggle" aria-haspopup="true">More ▾</button>
+                    <div class="nav-dropdown-menu">
+                        <a href="{{ url_for('main.students') }}">Students</a>
+                        <a href="{{ url_for('main.attendance') }}">Attendance</a>
+                        <a href="{{ url_for('main.classes') }}">Classes</a>
+                        <a href="{{ url_for('main.assignments') }}">Assignments</a>
+                        <a href="{{ url_for('main.announcements') }}">Announcements</a>
+                    </div>
+                </div>
+                {% endif %}
+            </nav>
+
+            <div class="header-actions">
+                <span class="user-badge {% if current_user.is_admin %}admin-badge{% elif current_user.is_guest %}guest-badge{% endif %}">
+                    {% if current_user.is_guest %}Guest: {% endif %}{{ current_user.label }}{% if current_user.is_admin %} · admin{% endif %}
+                </span>
+                {% if current_user.is_guest %}
+                <a href="{{ url_for('auth.register') }}" class="btn btn-sm btn-secondary">Sign up</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}" class="logout-link">Logout</a>
+                <button class="hamburger" type="button" aria-label="Open menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+            {% else %}
+            <div class="header-actions">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-sm btn-secondary">Login</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-sm btn-primary">Register</a>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="mobile-overlay"></div>
+
+    {% if current_user.is_authenticated %}
+    <nav class="mobile-menu" aria-label="Mobile">
+        {% if not current_user.is_guest %}
+        <a href="{{ url_for('main.dashboard') }}" class="nav-link">Dashboard</a>
+        {% endif %}
+        <a href="{{ url_for('retro.list_retros') }}" class="nav-link">Retros</a>
+        {% if not current_user.is_guest %}
+        <a href="{{ url_for('teams.list_teams') }}" class="nav-link">Teams</a>
+        <a href="{{ url_for('tickets.list_tickets') }}" class="nav-link">Tickets</a>
+        <a href="{{ url_for('main.students') }}" class="nav-link">Students</a>
+        <a href="{{ url_for('main.attendance') }}" class="nav-link">Attendance</a>
+        <a href="{{ url_for('main.classes') }}" class="nav-link">Classes</a>
+        <a href="{{ url_for('main.assignments') }}" class="nav-link">Assignments</a>
+        <a href="{{ url_for('main.announcements') }}" class="nav-link">Announcements</a>
+        {% else %}
+        <a href="{{ url_for('auth.register') }}" class="nav-link">Create full account</a>
+        {% endif %}
+        <div class="mobile-menu-footer">
+            <span class="user-badge">{{ current_user.label }}</span>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">Logout</a>
+        </div>
+    </nav>
+    {% endif %}
+
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {% if category == 'error' %}alert-error{% else %}alert-success{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburger = document.querySelector('.hamburger');
+            const mobileMenu = document.querySelector('.mobile-menu');
+            const overlay = document.querySelector('.mobile-overlay');
+
+            if (hamburger && mobileMenu && overlay) {
+                function toggleMenu() {
+                    hamburger.classList.toggle('active');
+                    mobileMenu.classList.toggle('active');
+                    overlay.classList.toggle('active');
+                    document.body.classList.toggle('overflow-hidden');
+                }
+                hamburger.addEventListener('click', toggleMenu);
+                overlay.addEventListener('click', toggleMenu);
+                window.addEventListener('resize', () => {
+                    if (window.innerWidth > 960 && mobileMenu.classList.contains('active')) toggleMenu();
+                });
+            }
+
+            document.querySelectorAll('.modal-backdrop').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) modal.classList.remove('open');
+                });
+            });
+
+            document.querySelectorAll('[data-copy-target]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const input = document.querySelector(btn.dataset.copyTarget);
+                    if (!input) return;
+                    input.select();
+                    input.setSelectionRange(0, 99999);
+                    navigator.clipboard.writeText(input.value).then(() => {
+                        const original = btn.textContent;
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => { btn.textContent = original; }, 1500);
+                    });
+                });
+            });
+        });
+
+        function openModal(id) { document.getElementById(id).classList.add('open'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        function editStudent(id) {
+            const name = prompt('Enter new name:');
+            if (name) {
+                fetch(`/edit_student/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                }).then(() => location.reload());
+            }
+        }
+
+        function deleteStudent(id) {
+            if (confirm('Delete this student?')) {
+                fetch(`/delete_student/${id}`, { method: 'POST' }).then(() => location.reload());
+            }
+        }
+    </script>
+</body>
+</html>

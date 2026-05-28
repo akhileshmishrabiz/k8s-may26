@@ -1,0 +1,69 @@
+# Variant 1 — minimal Deployment + Service
+# No probes, no resource limits. Good for first deploy / learning.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-portal-simple
+  labels:
+    app: devops-portal
+    variant: simple
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: devops-portal
+      variant: simple
+  template:
+    metadata:
+      labels:
+        app: devops-portal
+        variant: simple
+    spec:
+      containers:
+        - name: devops-portal
+          image: livingdevopswithakhilesh/studentportal:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: DB_LINK
+              valueFrom:
+                secretKeyRef:
+                  name: devops-portal-secret
+                  key: DB_LINK
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: devops-portal-secret
+                  key: SECRET_KEY
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: devops-portal-secret
+                  key: ADMIN_PASSWORD
+            - name: DEVOPS_CAPTAIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: devops-portal-secret
+                  key: DEVOPS_CAPTAIN_PASSWORD
+            - name: LOG_LEVEL
+              value: INFO
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-portal-simple
+  labels:
+    app: devops-portal
+    variant: simple
+spec:
+  type: NodePort
+  selector:
+    app: devops-portal
+    variant: simple
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      nodePort: 30001
