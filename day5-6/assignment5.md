@@ -228,3 +228,4 @@ Then via console:
 ---
 
 **Three things that must be right for nodes to join the cluster — node IAM role with all 3 policies, VPC CNI installed before node group creation, and security group with required ports open. Miss any one of them and nodes will appear healthy in EC2 but never show up in `kubectl get nodes`.**
+

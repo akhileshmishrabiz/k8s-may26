@@ -217,3 +217,16 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .DS_Store
+
+
+
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+terraform.tfvars.backup
+terraform.tfvars.json
+terraform.tfvars.json.backup
+terraform.tfvars.json.backup.backup
+terraform.tfvars.json.backup.backup.backup

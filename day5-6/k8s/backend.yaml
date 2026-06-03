@@ -6,7 +6,7 @@ metadata:
   labels:
     app: backend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: backend
@@ -25,10 +25,10 @@ spec:
       initContainers:
       - name: wait-for-db
         image: busybox
-        command: ['sh', '-c', 'until nslookup postgres-db.3-tier-app-eks.svc.cluster.local; do echo waiting for database; sleep 2; done;']
+        command: ['sh', '-c', 'until nslookup devopsdozo.cvik8accw2tk.ap-south-1.rds.amazonaws.com; do echo waiting for database; sleep 2; done;']
       containers:
       - name: backend
-        image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/devopsdozo:frontend
+        image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/devopsdozo:backend
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
