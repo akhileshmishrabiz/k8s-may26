@@ -26,7 +26,7 @@ resource "helm_release" "aws_load_balancer_controller" {
     },
     {
       name  = "serviceAccount.name"
-      value = "aws-load-balancer-controller"
+      value = var.awsloadbalancercontroller_sa
     },
     {
       name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"

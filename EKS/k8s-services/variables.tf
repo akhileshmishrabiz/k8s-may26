@@ -19,3 +19,9 @@ variable "eks_cluster_version" {
   type = string
   default = "1.31"
 }
+
+variable "awsloadbalancercontroller_sa" {
+  description = "The name of the AWS Load Balancer Controller service account"
+  type = string
+  default = "aws-load-balancer-controller"
+}
