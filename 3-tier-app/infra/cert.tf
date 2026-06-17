@@ -40,16 +40,16 @@ resource "aws_acm_certificate_validation" "app" {
 }
 
 # Create Route53 alias record to point subdomain to ALB
-# resource "aws_route53_record" "app" {
-#   zone_id = data.aws_route53_zone.main.zone_id
-#   name    = "${var.app_subdomain}.${var.domain_name}"
-#   type    = "A"
+resource "aws_route53_record" "app" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "${var.app_subdomain}.${var.domain_name}"
+  type    = "A"
 
-#   alias {
-#     name                   = kubernetes_ingress_v1.app_ingress_tls.status[0].load_balancer[0].ingress[0].hostname
-#     zone_id                = var.aws_alb_zoneid
-#     evaluate_target_health = true
-#   }
+  alias {
+    name                   = kubernetes_ingress_v1.app_ingress_tls.status[0].load_balancer[0].ingress[0].hostname
+    zone_id                = "ZP97RAFLXTNZK"
+    evaluate_target_health = true
+  }
 
-#   depends_on = [kubernetes_ingress_v1.app_ingress_tls]
-# }
+  depends_on = [kubernetes_ingress_v1.app_ingress_tls]
+}
