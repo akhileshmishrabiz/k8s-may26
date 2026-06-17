@@ -21,68 +21,68 @@ spec:
       nodeSelector:
         kubernetes.io/arch: amd64
       containers:
-      - name: migration
-        # Must match backend.yaml deployment image tag exactly
-        image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend:8d5d9bff8f81d2a6ab1ca654e268cdfdb17436cf
-        imagePullPolicy: Always
-        command: ["/bin/bash", "-c", "./migrate.sh"]
-        env:
-        - name: MIGRATION_ACTION
-          value: "upgrade"
-        - name: MIGRATION_TARGET
-          value: "head"
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: backend-secrets
-              key: DATABASE_URL
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: backend-secrets
-              key: SECRET_KEY
-        - name: FLASK_APP
-          valueFrom:
-            configMapKeyRef:
-              name: backend-configmap
-              key: FLASK_APP
-        - name: DB_HOST
-          valueFrom:
-            configMapKeyRef:
-              name: backend-configmap
-              key: DB_HOST
-        - name: DB_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: backend-configmap
-              key: DB_PORT
-        - name: DB_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: backend-configmap
-              key: DB_NAME
-        - name: FLASK_DEBUG
-          valueFrom:
-            configMapKeyRef:
-              name: backend-configmap
-              key: FLASK_DEBUG
-        - name: DB_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: backend-secrets
-              key: DB_USERNAME
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: backend-secrets
-              key: DB_PASSWORD
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
+        - name: migration
+          # Must match backend.yaml deployment image tag exactly
+          image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend:341ae01bcb97ce89b38f9fed86dac0b18c9d76a0
+          imagePullPolicy: Always
+          command: ["/bin/bash", "-c", "./migrate.sh"]
+          env:
+            - name: MIGRATION_ACTION
+              value: "upgrade"
+            - name: MIGRATION_TARGET
+              value: "head"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: SECRET_KEY
+            - name: FLASK_APP
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: FLASK_APP
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: DB_NAME
+            - name: FLASK_DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: FLASK_DEBUG
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: DB_PASSWORD
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
       restartPolicy: Never
       activeDeadlineSeconds: 300
   backoffLimit: 3

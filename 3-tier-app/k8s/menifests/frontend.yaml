@@ -21,30 +21,30 @@ spec:
         app: frontend
     spec:
       containers:
-      - name: frontend
-        image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend:8d5d9bff8f81d2a6ab1ca654e268cdfdb17436cf
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 80
-        env:
-        - name: BACKEND_URL
-          value: "http://backend.3-tier-app-eks.svc.cluster.local:8000"
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "300m"
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 80
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 80
-          initialDelaySeconds: 15
-          periodSeconds: 20
+        - name: frontend
+          image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend:341ae01bcb97ce89b38f9fed86dac0b18c9d76a0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_URL
+              value: "http://backend.3-tier-app-eks.svc.cluster.local:8000"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
