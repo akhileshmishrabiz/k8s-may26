@@ -2,8 +2,6 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-# Import models here
-from .models import Topic, Question, WikiPage
+from .models import Question, QuizAttempt, QuizSession, Topic, WikiPage
 
-# Make models available at package level
-__all__ = ['db', 'Topic', 'Question', 'WikiPage']
+__all__ = ["db", "Topic", "Question", "WikiPage", "QuizSession", "QuizAttempt"]

@@ -1,6 +1,64 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import API_URL from '../config/api';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { startQuiz, submitQuiz } from '../services/quizApi';
+import {
+  getPlayerName,
+  setPlayerName,
+  validatePlayerName,
+} from '../utils/player';
+
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function PlayerNameModal({ onConfirm }) {
+  const [name, setName] = useState(getPlayerName());
+  const [error, setError] = useState(null);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const validationError = validatePlayerName(name);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    const saved = setPlayerName(name);
+    onConfirm(saved);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <h2 className="text-2xl font-bold mb-2">Enter Your Name</h2>
+        <p className="text-gray-600 mb-6">
+          Your name appears on the leaderboard. Pick something you&apos;ll recognize.
+        </p>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError(null);
+            }}
+            placeholder="e.g. DevOps Ninja"
+            className="w-full border border-gray-300 rounded-lg px-4 py-3 mb-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            autoFocus
+          />
+          {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Start Quiz
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function Quiz() {
   const { topic } = useParams();
@@ -10,102 +68,110 @@ function Quiz() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showNameModal, setShowNameModal] = useState(!getPlayerName());
+  const [playerName, setPlayerNameState] = useState(getPlayerName());
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [showReview, setShowReview] = useState(false);
+  const timerRef = useRef(null);
+  const startTimeRef = useRef(null);
 
-  const fetchQuiz = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_URL}/api/quiz/${topic}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch quiz');
-      }
-      const data = await response.json();
-      console.log('Fetched quiz:', data);
-      setQuiz(data);
-      setAnswers({}); // Reset answers when getting new questions
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching quiz:', err);
-      setError('Failed to load quiz. Please try again.');
-    } finally {
-      setLoading(false);
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-  }, [topic]);
+  }, []);
+
+  const startTimer = useCallback(() => {
+    stopTimer();
+    startTimeRef.current = Date.now();
+    setElapsedSeconds(0);
+    timerRef.current = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+  }, [stopTimer]);
+
+  const loadQuiz = useCallback(
+    async (name) => {
+      try {
+        setLoading(true);
+        setError(null);
+        setResult(null);
+        setAnswers({});
+        setShowReview(false);
+        const data = await startQuiz(topic, name);
+        setQuiz(data);
+        startTimer();
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [topic, startTimer]
+  );
 
   useEffect(() => {
-    fetchQuiz();
-  }, [fetchQuiz]);
+    if (playerName && !showNameModal) {
+      loadQuiz(playerName);
+    }
+    return () => stopTimer();
+  }, [playerName, showNameModal, loadQuiz, stopTimer]);
 
-  const handleAnswerSelect = (questionId, answerIndex) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: answerIndex
-    }));
+  const handleNameConfirm = (name) => {
+    setPlayerNameState(name);
+    setShowNameModal(false);
   };
 
+  const handleAnswerSelect = (questionId, answerIndex) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: answerIndex }));
+  };
+
+  const answeredCount = Object.keys(answers).length;
+  const totalQuestions = quiz?.questions?.length || 0;
+  const progress = totalQuestions ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+
   const handleSubmit = async () => {
+    if (answeredCount < totalQuestions) {
+      setError(`Please answer all questions (${answeredCount}/${totalQuestions} answered)`);
+      return;
+    }
+
     try {
-      // Check if all questions are answered
-      const answeredQuestions = Object.keys(answers).length;
-      const totalQuestions = quiz.questions.length;
-
-      if (answeredQuestions < totalQuestions) {
-        alert(`Please answer all questions (${answeredQuestions}/${totalQuestions} answered)`);
-        return;
-      }
-
-      // Debug log
-      console.log('Submitting answers:', {
-        topic,
-        answers
-      });
-
-      const response = await fetch(`${API_URL}/api/quiz/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          topic: topic,
-          answers: answers
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit quiz');
-      }
-
-      const data = await response.json();
-      console.log('Quiz result received:', data);  // Debug log
+      setError(null);
+      stopTimer();
+      const data = await submitQuiz(quiz.session_id, answers, elapsedSeconds);
       setResult(data);
     } catch (err) {
-      console.error('Error submitting quiz:', err);
-      setError('Failed to submit quiz. Please try again.');
+      setError(err.message);
+      startTimer();
     }
   };
 
-  const handleTryAgain = async () => {
-    setResult(null);
-    setAnswers({});
-    await fetchQuiz();
+  const handleTryAgain = () => {
+    loadQuiz(playerName);
   };
+
+  if (showNameModal) {
+    return <PlayerNameModal onConfirm={handleNameConfirm} />;
+  }
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Loading quiz...</div>
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="inline-block animate-pulse text-gray-500">Loading quiz...</div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !quiz) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           <p>{error}</p>
           <button
             onClick={() => navigate('/')}
-            className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
           >
             Return to Home
           </button>
@@ -116,83 +182,198 @@ function Quiz() {
 
   if (!quiz) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">No quiz found.</div>
+      <div className="container mx-auto px-4 py-8 text-center text-gray-500">
+        No quiz found.
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-3xl font-bold mb-6">{quiz.title}</h1>
-      {quiz.total_questions > quiz.selected_questions && (
-        <p className="mb-4 text-gray-600">
-          Showing {quiz.selected_questions} questions from a pool of {quiz.total_questions} available questions.
-        </p>
-      )}
-      
       {!result ? (
-        <div className="space-y-8">
-          {quiz.questions.map((question, index) => (
-            <div key={question.id} className="bg-white rounded-lg shadow-md p-6">
-              <p className="text-xl mb-4">
-                {index + 1}. {question.question}
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">{quiz.title}</h1>
+              <p className="text-gray-600 mt-1">
+                Playing as <span className="font-medium text-gray-800">{playerName}</span>
               </p>
-              <div className="space-y-2">
-                {question.options.map((option, optionIndex) => (
-                  <label
-                    key={optionIndex}
-                    className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
-                      answers[question.id] === optionIndex
-                        ? 'bg-blue-50 border border-blue-200'
-                        : 'hover:bg-gray-50 border border-transparent'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name={`question-${question.id}`}
-                      className="mr-3"
-                      checked={answers[question.id] === optionIndex}
-                      onChange={() => handleAnswerSelect(question.id, optionIndex)}
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
             </div>
-          ))}
-          
+            <div className="bg-gray-900 text-white px-4 py-2 rounded-lg font-mono text-lg">
+              {formatTime(elapsedSeconds)}
+            </div>
+          </div>
+
+          {quiz.total_questions > quiz.selected_questions && (
+            <p className="mb-4 text-gray-600 text-sm">
+              {quiz.selected_questions} random questions from a pool of {quiz.total_questions}.
+            </p>
+          )}
+
+          <div className="mb-6">
+            <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <span>
+                Progress: {answeredCount}/{totalQuestions}
+              </span>
+              <span>{progress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-6">
+            {quiz.questions.map((question, index) => (
+              <div key={question.id} className="bg-white rounded-xl shadow-md p-6">
+                <p className="text-lg font-medium mb-4 text-gray-900">
+                  <span className="text-blue-600 mr-2">{index + 1}.</span>
+                  {question.question}
+                </p>
+                <div className="space-y-2">
+                  {question.options.map((option, optionIndex) => (
+                    <label
+                      key={optionIndex}
+                      className={`flex items-center p-3 rounded-lg cursor-pointer border transition-colors ${
+                        answers[question.id] === optionIndex
+                          ? 'bg-blue-50 border-blue-300'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={`question-${question.id}`}
+                        className="mr-3 accent-blue-600"
+                        checked={answers[question.id] === optionIndex}
+                        onChange={() => handleAnswerSelect(question.id, optionIndex)}
+                      />
+                      <span>{option}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <button
             onClick={handleSubmit}
-            className="w-full bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 font-medium transition-colors"
+            disabled={answeredCount < totalQuestions}
+            className="w-full mt-8 bg-blue-600 text-white px-6 py-4 rounded-xl hover:bg-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Submit Quiz
           </button>
-        </div>
+        </>
       ) : (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Quiz Results</h2>
-          <div className="bg-blue-50 p-6 rounded-lg mb-6">
-            <p className="text-4xl font-bold text-blue-600 mb-2">
-              {Math.round(result.score)}%
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-md p-8 text-center">
+            <h2 className="text-2xl font-bold mb-2">Quiz Complete!</h2>
+            <p className="text-gray-600 mb-6">{result.topic_name}</p>
+
+            <div
+              className={`inline-block rounded-2xl px-8 py-6 mb-4 ${
+                result.passed ? 'bg-green-50' : 'bg-orange-50'
+              }`}
+            >
+              <p
+                className={`text-5xl font-bold mb-1 ${
+                  result.passed ? 'text-green-600' : 'text-orange-600'
+                }`}
+              >
+                {Math.round(result.score)}%
+              </p>
+              <p className="text-gray-700">
+                {result.correct} of {result.total} correct
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Time: {formatTime(result.time_taken_seconds)} · Rank #{result.rank} on this topic
+              </p>
+            </div>
+
+            <p
+              className={`text-lg font-medium mb-6 ${
+                result.passed ? 'text-green-700' : 'text-orange-700'
+              }`}
+            >
+              {result.passed
+                ? `Passed! (≥ ${result.pass_threshold}%)`
+                : `Keep practicing — pass mark is ${result.pass_threshold}%`}
             </p>
-            <p className="text-lg text-blue-800">
-              You got {result.correct} out of {result.total} questions correct
-            </p>
+
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                onClick={handleTryAgain}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Try Again
+              </button>
+              <Link
+                to="/leaderboard"
+                className="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-gray-900 inline-block"
+              >
+                View Leaderboard
+              </Link>
+              <button
+                onClick={() => navigate('/')}
+                className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300"
+              >
+                Home
+              </button>
+            </div>
           </div>
-          <div className="space-x-4">
+
+          <div className="bg-white rounded-xl shadow-md p-6">
             <button
-              onClick={handleTryAgain}
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition-colors"
+              onClick={() => setShowReview(!showReview)}
+              className="w-full flex items-center justify-between text-left font-medium text-gray-900"
             >
-              Try Another Quiz
+              <span>Question Review ({result.review?.length || 0})</span>
+              <span>{showReview ? '▲' : '▼'}</span>
             </button>
-            <button
-              onClick={() => navigate('/')}
-              className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition-colors"
-            >
-              Back to Home
-            </button>
+
+            {showReview && result.review && (
+              <div className="mt-4 space-y-4">
+                {result.review.map((item, index) => (
+                  <div
+                    key={item.question_id}
+                    className={`border rounded-lg p-4 ${
+                      item.is_correct
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-red-200 bg-red-50'
+                    }`}
+                  >
+                    <p className="font-medium mb-2">
+                      {index + 1}. {item.question}
+                    </p>
+                    <div className="space-y-1 text-sm">
+                      {item.options.map((option, optIdx) => (
+                        <p
+                          key={optIdx}
+                          className={`px-2 py-1 rounded ${
+                            optIdx === item.correct_answer
+                              ? 'bg-green-200 font-medium'
+                              : optIdx === item.your_answer && !item.is_correct
+                                ? 'bg-red-200 line-through'
+                                : ''
+                          }`}
+                        >
+                          {option}
+                          {optIdx === item.correct_answer && ' ✓'}
+                          {optIdx === item.your_answer && !item.is_correct && ' (your answer)'}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

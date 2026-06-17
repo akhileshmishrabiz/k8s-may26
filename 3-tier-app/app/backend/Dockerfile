@@ -29,5 +29,4 @@ RUN chmod +x migrate.sh
 EXPOSE 8000
 
 # Command to run the application
-# CMD ["gunicorn", "--bind", "0.0.0.0:8000", "run:app"]
-CMD ["bash", "-c", "./migrate.sh && gunicorn --bind 0.0.0.0:8000 run:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "run:app"]
