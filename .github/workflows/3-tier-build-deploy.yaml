@@ -51,15 +51,13 @@ jobs:
       contents: read
       id-token: write
     env:
-      backned_path: 3-tier-app/k8s/menifests/backend.yaml
+      path: 3-tier-app/k8s/menifests     
       backend_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend
       backend_tag: ${{ github.sha }}
       frontend_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend
       frontend_tag: ${{ github.sha }}
-      frontend_path: 3-tier-app/k8s/menifests/frontend.yaml
       db_migration_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend
       db_migration_tag: ${{ github.sha }}
-      db_migration_path: 3-tier-app/k8s/menifests/db-migration.yaml
 
 
     steps:
@@ -67,15 +65,15 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Update backend image
-        working-directory: ${{ env.backned_path }}
+        working-directory: ${{ env.path }}
         run: yq -i '.spec.template.spec.containers[0].image = "879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend:8d5d9bff8f81d2a6ab1ca654e268cdfdb17436cf"' backend.yaml
 
       - name: Update frontend image
-        working-directory: ${{ env.frontend_path }}
+        working-directory: ${{ env.path }}
         run: yq -i '.spec.template.spec.containers[0].image = "879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend:8d5d9bff8f81d2a6ab1ca654e268cdfdb17436cf"' frontend.yaml
 
       - name: Update db migration image
-        working-directory: ${{ env.db_migration_path }}
+        working-directory: ${{ env.path }}
         run: yq -i '.spec.template.spec.containers[0].image = "879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend:8d5d9bff8f81d2a6ab1ca654e268cdfdb17436cf"' db-migration.yaml
 
       - name: Commit and push changes
