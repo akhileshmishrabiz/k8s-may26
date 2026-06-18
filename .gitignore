@@ -230,3 +230,9 @@ terraform.tfvars.json
 terraform.tfvars.json.backup
 terraform.tfvars.json.backup.backup
 terraform.tfvars.json.backup.backup.backup
+
+
+
+
+node_modules/
+.DS_Store
