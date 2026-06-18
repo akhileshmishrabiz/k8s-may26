@@ -10,7 +10,7 @@ resource "kubernetes_manifest" "app" {
       project = "default"
       source = {
         repoURL        = "https://github.com/akhileshmishrabiz/k8s-may26.git"
-        targetRevision = "main"
+        targetRevision = "argo-3tier"
         path           = "3-tier-app/k8s/menifests"
       }
       destination = {
