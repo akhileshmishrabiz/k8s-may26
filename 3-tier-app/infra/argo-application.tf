@@ -1,3 +1,4 @@
+# argo application for 3-tier app
 resource "kubernetes_manifest" "app" {
   manifest = {
     apiVersion = "argoproj.io/v1alpha1"
