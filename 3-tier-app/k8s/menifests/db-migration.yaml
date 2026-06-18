@@ -23,7 +23,7 @@ spec:
       containers:
         - name: migration
           # Must match backend.yaml deployment image tag exactly
-          image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend:341ae01bcb97ce89b38f9fed86dac0b18c9d76a0
+          image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend:9a68f2efd53083dddc779501ea1ed505a45cb6e5
           imagePullPolicy: Always
           command: ["/bin/bash", "-c", "./migrate.sh"]
           env:
