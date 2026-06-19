@@ -8,10 +8,12 @@ import QuestionManager from './components/QuestionManager';
 import WikiList from './components/wiki/WikiList';
 import WikiPage from './components/wiki/WikiPage';
 import WikiEditor from './components/wiki/WikiEditor';
+import MetricsTracker from './components/MetricsTracker';
 
 function App() {
   return (
     <Router>
+      <MetricsTracker />
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <main className="pb-12">

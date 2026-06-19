@@ -1,12 +1,16 @@
 from flask import current_app, jsonify, request
 
 from app.cloudwatch_metrics import emit_quiz_submission
+from app.logging_config import setup_logging
 from app.models import db
 from app.models.models import Question, QuizAttempt, QuizSession, Topic
+from app.prometheus_metrics import record_quiz_start, record_quiz_submission
 from app.quiz_logic import create_quiz_session, get_player_rank
 from app.validators import validate_player_name
 
 from . import quiz_bp
+
+logger = setup_logging()
 
 
 @quiz_bp.route("/<topic_slug>/start", methods=["POST"])
@@ -32,6 +36,18 @@ def start_quiz(topic_slug):
     session, public_questions = create_quiz_session(topic, player_name)
     db.session.add(session)
     db.session.commit()
+
+    record_quiz_start(topic.slug)
+    logger.info(
+        "quiz started",
+        extra={
+            "event": "quiz_start",
+            "session_id": session.id,
+            "topic_slug": topic.slug,
+            "player_name": player_name,
+            "question_count": len(public_questions),
+        },
+    )
 
     return jsonify(
         {
@@ -93,7 +109,24 @@ def submit_quiz():
     db.session.commit()
 
     emit_quiz_submission(session.topic.slug, passed=passed)
+    record_quiz_submission(session.topic.slug, passed=passed)
     rank = get_player_rank(session.topic_id, session.player_name)
+
+    logger.info(
+        "quiz submitted",
+        extra={
+            "event": "quiz_submit",
+            "session_id": session_id,
+            "topic_slug": session.topic.slug,
+            "player_name": session.player_name,
+            "score": score,
+            "correct_count": correct_count,
+            "total_questions": total_questions,
+            "time_taken_seconds": time_taken_seconds,
+            "passed": passed,
+            "rank": rank,
+        },
+    )
 
     return jsonify(
         {

@@ -1,11 +1,27 @@
 from flask import jsonify, request
+from sqlalchemy import or_
+
 from app.models.models import Topic
 from app.models import db
 from . import topic_bp
 
+
 @topic_bp.route('', methods=['GET'])
 def get_topics():
-    topics = Topic.query.all()
+    search = request.args.get('search', '').strip()
+    query = Topic.query
+
+    if search:
+        pattern = f'%{search}%'
+        query = query.filter(
+            or_(
+                Topic.name.ilike(pattern),
+                Topic.description.ilike(pattern),
+                Topic.slug.ilike(pattern),
+            )
+        )
+
+    topics = query.order_by(Topic.name).all()
     return jsonify([topic.to_dict() for topic in topics])
 
 @topic_bp.route('', methods=['POST'])

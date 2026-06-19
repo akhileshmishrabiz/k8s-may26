@@ -4,6 +4,7 @@ topic_bp = Blueprint("topics", __name__, url_prefix="/api/topics")
 quiz_bp = Blueprint("quizzes", __name__, url_prefix="/api/quiz")
 wiki_bp = Blueprint("wiki", __name__, url_prefix="/api/wiki")
 leaderboard_bp = Blueprint("leaderboard", __name__, url_prefix="/api/leaderboard")
+telemetry_bp = Blueprint("telemetry", __name__, url_prefix="/api/telemetry")
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -13,4 +14,4 @@ def api_health_check():
     return jsonify({"status": "healthy", "message": "API is operational"}), 200
 
 
-from . import leaderboard_routes, quiz_routes, topic_routes, wiki_routes
+from . import leaderboard_routes, quiz_routes, telemetry_routes, topic_routes, wiki_routes

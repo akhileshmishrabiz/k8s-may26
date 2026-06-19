@@ -1,4 +1,5 @@
 import API_URL from '../config/api';
+import { instrumentedFetch } from './metricsClient';
 
 async function parseJsonResponse(response, fallbackMessage) {
   const contentType = response.headers.get('content-type') || '';
@@ -13,7 +14,7 @@ async function parseJsonResponse(response, fallbackMessage) {
 }
 
 export async function startQuiz(topicSlug, playerName) {
-  const response = await fetch(`${API_URL}/api/quiz/${topicSlug}/start`, {
+  const response = await instrumentedFetch(`${API_URL}/api/quiz/${topicSlug}/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_name: playerName }),
@@ -26,7 +27,7 @@ export async function startQuiz(topicSlug, playerName) {
 }
 
 export async function submitQuiz(sessionId, answers, timeTakenSeconds) {
-  const response = await fetch(`${API_URL}/api/quiz/submit`, {
+  const response = await instrumentedFetch(`${API_URL}/api/quiz/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -47,7 +48,7 @@ export async function fetchLeaderboard({ scope = 'global', topic = null, limit =
   if (topic) {
     params.set('topic', topic);
   }
-  const response = await fetch(`${API_URL}/api/leaderboard?${params}`);
+  const response = await instrumentedFetch(`${API_URL}/api/leaderboard?${params}`);
   const data = await parseJsonResponse(response, 'Failed to load leaderboard');
   if (!response.ok) {
     throw new Error(data.error || 'Failed to load leaderboard');
@@ -56,7 +57,7 @@ export async function fetchLeaderboard({ scope = 'global', topic = null, limit =
 }
 
 export async function fetchLeaderboardStats() {
-  const response = await fetch(`${API_URL}/api/leaderboard/stats`);
+  const response = await instrumentedFetch(`${API_URL}/api/leaderboard/stats`);
   const data = await parseJsonResponse(response, 'Failed to load stats');
   if (!response.ok) {
     throw new Error(data.error || 'Failed to load stats');
@@ -65,7 +66,7 @@ export async function fetchLeaderboardStats() {
 }
 
 export async function fetchPlayerHistory(playerName, limit = 20) {
-  const response = await fetch(
+  const response = await instrumentedFetch(
     `${API_URL}/api/leaderboard/player/${encodeURIComponent(playerName)}/history?limit=${limit}`
   );
   const data = await parseJsonResponse(response, 'Failed to load player history');
@@ -75,11 +76,28 @@ export async function fetchPlayerHistory(playerName, limit = 20) {
   return data;
 }
 
-export async function fetchTopics() {
-  const response = await fetch(`${API_URL}/api/topics`);
+export async function fetchTopics(search = '') {
+  const params = new URLSearchParams();
+  if (search.trim()) {
+    params.set('search', search.trim());
+  }
+  const query = params.toString();
+  const url = query ? `${API_URL}/api/topics?${query}` : `${API_URL}/api/topics`;
+  const response = await instrumentedFetch(url);
   const data = await parseJsonResponse(response, 'Failed to load topics');
   if (!response.ok) {
     throw new Error(data.error || 'Failed to load topics');
+  }
+  return data;
+}
+
+export async function fetchRecentActivity(limit = 10) {
+  const response = await instrumentedFetch(
+    `${API_URL}/api/leaderboard/recent?limit=${limit}`
+  );
+  const data = await parseJsonResponse(response, 'Failed to load recent activity');
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to load recent activity');
   }
   return data;
 }

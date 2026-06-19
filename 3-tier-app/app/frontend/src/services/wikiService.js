@@ -1,4 +1,5 @@
 import API_URL from '../config/api';
+import { instrumentedFetch } from './metricsClient';
 
 export const fetchAllWikiPages = async (category = null) => {
   try {
@@ -6,7 +7,7 @@ export const fetchAllWikiPages = async (category = null) => {
       ? `${API_URL}/api/wiki?category=${encodeURIComponent(category)}`
       : `${API_URL}/api/wiki`;
       
-    const response = await fetch(url);
+    const response = await instrumentedFetch(url);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -19,7 +20,7 @@ export const fetchAllWikiPages = async (category = null) => {
 
 export const fetchWikiPage = async (slug) => {
   try {
-    const response = await fetch(`${API_URL}/api/wiki/${slug}`);
+    const response = await instrumentedFetch(`${API_URL}/api/wiki/${slug}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -32,7 +33,7 @@ export const fetchWikiPage = async (slug) => {
 
 export const fetchWikiCategories = async () => {
   try {
-    const response = await fetch(`${API_URL}/api/wiki/categories`);
+    const response = await instrumentedFetch(`${API_URL}/api/wiki/categories`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -45,7 +46,7 @@ export const fetchWikiCategories = async () => {
 
 export const createWikiPage = async (pageData) => {
   try {
-    const response = await fetch(`${API_URL}/api/wiki`, {
+    const response = await instrumentedFetch(`${API_URL}/api/wiki`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +68,7 @@ export const createWikiPage = async (pageData) => {
 
 export const updateWikiPage = async (slug, pageData) => {
   try {
-    const response = await fetch(`${API_URL}/api/wiki/${slug}`, {
+    const response = await instrumentedFetch(`${API_URL}/api/wiki/${slug}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -89,7 +90,7 @@ export const updateWikiPage = async (slug, pageData) => {
 
 export const deleteWikiPage = async (slug) => {
   try {
-    const response = await fetch(`${API_URL}/api/wiki/${slug}`, {
+    const response = await instrumentedFetch(`${API_URL}/api/wiki/${slug}`, {
       method: 'DELETE',
     });
     

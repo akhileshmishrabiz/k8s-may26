@@ -8,3 +8,4 @@ sqlalchemy==1.4.46
 gunicorn==21.2.0
 python-slugify==8.0.1
 python-json-logger==2.0.7
+prometheus-client==0.20.0

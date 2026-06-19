@@ -1,6 +1,7 @@
 from flask import current_app, jsonify, request
 
 from app.models.models import QuizAttempt, Topic
+from app.prometheus_metrics import record_leaderboard_lookup
 from app.quiz_logic import get_global_leaderboard, get_topic_leaderboard
 from app.validators import validate_player_name
 
@@ -15,6 +16,8 @@ def get_leaderboard():
         limit = min(int(request.args.get("limit", 50)), 100)
     except (TypeError, ValueError):
         limit = current_app.config.get("LEADERBOARD_DEFAULT_LIMIT", 50)
+
+    record_leaderboard_lookup(scope)
 
     if scope == "topic":
         if not topic_slug:
@@ -72,6 +75,27 @@ def leaderboard_stats():
             "unique_players": unique_players,
             "total_passed": total_passed,
             "topics": topic_stats,
+        }
+    )
+
+
+@leaderboard_bp.route("/recent", methods=["GET"])
+def recent_activity():
+    try:
+        limit = min(int(request.args.get("limit", 10)), 50)
+    except (TypeError, ValueError):
+        limit = 10
+
+    record_leaderboard_lookup("recent")
+
+    attempts = (
+        QuizAttempt.query.order_by(QuizAttempt.completed_at.desc()).limit(limit).all()
+    )
+
+    return jsonify(
+        {
+            "entries": [attempt.to_history_dict() for attempt in attempts],
+            "count": len(attempts),
         }
     )
 

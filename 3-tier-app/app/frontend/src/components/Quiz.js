@@ -2,6 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { startQuiz, submitQuiz } from '../services/quizApi';
 import {
+  recordQuizDuration,
+  recordQuizUiEvent,
+} from '../services/metricsClient';
+import {
   getPlayerName,
   setPlayerName,
   validatePlayerName,
@@ -74,6 +78,27 @@ function Quiz() {
   const [showReview, setShowReview] = useState(false);
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
+  const elapsedSecondsRef = useRef(0);
+  const quizStateRef = useRef({ quiz: null, result: null, topic: null });
+
+  useEffect(() => {
+    elapsedSecondsRef.current = elapsedSeconds;
+  }, [elapsedSeconds]);
+
+  useEffect(() => {
+    quizStateRef.current = { quiz, result, topic };
+  }, [quiz, result, topic]);
+
+  useEffect(() => {
+    return () => {
+      const { quiz: activeQuiz, result: activeResult, topic: activeTopic } =
+        quizStateRef.current;
+      if (activeQuiz && !activeResult) {
+        recordQuizUiEvent('quiz_abandoned', activeTopic);
+        recordQuizDuration(activeTopic, 'abandoned', elapsedSecondsRef.current);
+      }
+    };
+  }, []);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -101,6 +126,7 @@ function Quiz() {
         setShowReview(false);
         const data = await startQuiz(topic, name);
         setQuiz(data);
+        recordQuizUiEvent('quiz_started', topic);
         startTimer();
       } catch (err) {
         setError(err.message);
@@ -142,6 +168,8 @@ function Quiz() {
       stopTimer();
       const data = await submitQuiz(quiz.session_id, answers, elapsedSeconds);
       setResult(data);
+      recordQuizUiEvent('quiz_completed', topic);
+      recordQuizDuration(topic, data.passed ? 'passed' : 'failed', elapsedSeconds);
     } catch (err) {
       setError(err.message);
       startTimer();
