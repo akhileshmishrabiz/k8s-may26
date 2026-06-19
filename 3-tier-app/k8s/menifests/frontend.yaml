@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend:9a68f2efd53083dddc779501ea1ed505a45cb6e5
+          image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend:e490f9b324568891cad48da5495a89ecd5de2c09
           imagePullPolicy: Always
           ports:
             - containerPort: 80
