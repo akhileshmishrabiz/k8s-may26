@@ -1,0 +1,22 @@
+groups:
+  - name: ecommerce-services
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.job }} for more than 2 minutes."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+          /
+          sum(rate(http_requests_total[5m])) by (job) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx rate on {{ $labels.job }}"

@@ -293,8 +293,8 @@ services:
   #   ports:
   #     - "9090:9090"
   #   volumes:
-  #     - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-  #     - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+  #     - ./apps/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - ./apps/monitoring/prometheus/rules:/etc/prometheus/rules:ro
   #     - prometheus-data:/prometheus
   #   depends_on:
   #     - product-service
@@ -319,9 +319,9 @@ services:
   #   ports:
   #     - "3001:3000"
   #   volumes:
-  #     - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-  #     - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-  #     - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+  #     - ./apps/monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+  #     - ./apps/monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+  #     - ./apps/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
   #     - grafana-data:/var/lib/grafana
   #   depends_on:
   #     - prometheus

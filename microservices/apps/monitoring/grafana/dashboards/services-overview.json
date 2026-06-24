@@ -1,0 +1,22 @@
+{
+  "title": "Microservices Overview",
+  "uid": "ms-services-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Scrape targets up",
+      "gridPos": {"h": 4, "w": 8, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(up)", "legendFormat": "up"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP request rate",
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 0},
+      "targets": [{"expr": "sum(rate(http_requests_total[5m])) by (job)", "legendFormat": "{{job}}"}]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-job
+  namespace: ecommerce
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed-job
+          image: microservices-seed-job:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: API_URL
+              value: http://api-gateway:80
+            - name: PREFLIGHT_ATTEMPTS
+              value: "60"
+            - name: PREFLIGHT_SLEEP
+              value: "5"
