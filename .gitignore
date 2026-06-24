@@ -181,12 +181,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# PyCharm
-#   JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#   and can be added to the global gitignore or merged into this file.  For a more nuclear
-#   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
+# PyCharm / JetBrains
+.idea/
 
 # Abstra
 #   Abstra is an AI-powered process automation framework.
@@ -195,11 +191,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
+.vscode/
+*.code-workspace
+
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
@@ -216,9 +210,36 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
+# Frontend build output
+dist/
+build/
+.vite/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.test
+*.out
+/bin/
+/vendor/
+
+# Keep .env.example tracked; .env is ignored above
+!.env.example
 
 .terraform/
 .terraform.lock.hcl
@@ -230,9 +251,3 @@ terraform.tfvars.json
 terraform.tfvars.json.backup
 terraform.tfvars.json.backup.backup
 terraform.tfvars.json.backup.backup.backup
-
-
-
-
-node_modules/
-.DS_Store
