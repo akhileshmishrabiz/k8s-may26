@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "devops-app.configMapName" . }}
+  namespace: {{ include "devops-app.namespace" . }}
+  labels:
+    {{- include "devops-app.labels" (dict "root" . "component" "app-config") | nindent 4 }}
+data:
+  DB_HOST: {{ include "devops-app.postgresHost" . | quote }}
+  DB_NAME: {{ .Values.config.dbName | quote }}
+  DB_PORT: {{ .Values.config.dbPort | quote }}
+  FLASK_DEBUG: {{ .Values.config.flaskDebug | quote }}

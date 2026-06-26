@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: 3-tier-app-eks
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      initContainers:
+      - name: wait-for-db
+        image: postgres:15
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: DB_PASSWORD
+        command:
+        - sh
+        - -c
+        - |
+          until pg_isready -h postgres-db -p 5432 -U postgres; do
+            echo waiting for postgres...
+            sleep 2
+          done
+      containers:
+      - name: backend
+        image: devops-backend:local
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ALLOWED_ORIGINS
+          value: "https://akhileshmishra.tech,http://akhileshmishra.tech"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: DATABASE_URL
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: SECRET_KEY
+        - name: FLASK_DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: FLASK_DEBUG
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: 3-tier-app-eks
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP

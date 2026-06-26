@@ -1,0 +1,138 @@
+# Default values for devops-app.
+# Override namespace at install time: helm install devops-app . -n 3-tier-app-eks --create-namespace
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Target namespace for all resources (defaults to helm release namespace).
+namespaceOverride: "3-tier-app-eks"
+
+configMap:
+  name: app-config
+
+config:
+  dbName: "postgres"
+  dbPort: "5432"
+  flaskDebug: "0"
+
+# Production should use external secrets (e.g. External Secrets Operator, Sealed Secrets).
+secrets:
+  name: db-secrets
+  stringData:
+    DB_USERNAME: postgres
+    DB_PASSWORD: DdZK6EBeWY
+    SECRET_KEY: dev-secret-key
+    DATABASE_URL: postgresql://postgres:DdZK6EBeWY@postgres-db:5432/postgres
+
+backend:
+  name: backend
+  replicas: 2
+  image:
+    repository: devops-backend
+    tag: local
+    pullPolicy: Never
+  allowedOrigins: "https://akhileshmishra.tech,http://akhileshmishra.tech"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  initContainer:
+    image:
+      repository: postgres
+      tag: "15"
+      pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+frontend:
+  name: frontend
+  replicas: 2
+  image:
+    repository: devops-frontend
+    tag: local
+    pullPolicy: Never
+  # Leave empty to auto-build from backend service name, namespace, and port.
+  backendUrl: ""
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 15
+    periodSeconds: 20
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "300m"
+
+postgres:
+  name: postgres
+  replicas: 1
+  image:
+    repository: postgres
+    tag: "15"
+    pullPolicy: IfNotPresent
+  pgdata: /var/lib/postgresql/data/pgdata
+  service:
+    headless:
+      name: postgres-headless
+      port: 5432
+      targetPort: 5432
+    clusterIP:
+      name: postgres-db
+      port: 5432
+      targetPort: 5432
+  storage:
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+  readinessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - postgres
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  livenessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - postgres
+    initialDelaySeconds: 30
+    periodSeconds: 20
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"

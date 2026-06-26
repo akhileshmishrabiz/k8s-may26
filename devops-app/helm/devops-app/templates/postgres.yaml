@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgres.service.headless.name }}
+  namespace: {{ include "devops-app.namespace" . }}
+  labels:
+    {{- include "devops-app.labels" (dict "root" . "component" "postgres") | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "devops-app.selectorLabels" (dict "component" "postgres") | nindent 4 }}
+  ports:
+  - name: postgres
+    port: {{ .Values.postgres.service.headless.port }}
+    targetPort: {{ .Values.postgres.service.headless.targetPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgres.service.clusterIP.name }}
+  namespace: {{ include "devops-app.namespace" . }}
+  labels:
+    {{- include "devops-app.labels" (dict "root" . "component" "postgres") | nindent 4 }}
+    service: database
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "devops-app.selectorLabels" (dict "component" "postgres") | nindent 4 }}
+  ports:
+  - name: postgres
+    port: {{ .Values.postgres.service.clusterIP.port }}
+    targetPort: {{ .Values.postgres.service.clusterIP.targetPort }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.postgres.name }}
+  namespace: {{ include "devops-app.namespace" . }}
+  labels:
+    {{- include "devops-app.labels" (dict "root" . "component" "postgres") | nindent 4 }}
+spec:
+  serviceName: {{ .Values.postgres.service.headless.name }}
+  replicas: {{ .Values.postgres.replicas }}
+  selector:
+    matchLabels:
+      {{- include "devops-app.selectorLabels" (dict "component" "postgres") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "devops-app.selectorLabels" (dict "component" "postgres") | nindent 8 }}
+    spec:
+      containers:
+      - name: postgres
+        image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+        imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.postgres.service.clusterIP.targetPort }}
+          name: postgres
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "devops-app.secretName" . }}
+              key: DB_USERNAME
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "devops-app.secretName" . }}
+              key: DB_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "devops-app.configMapName" . }}
+              key: DB_NAME
+        - name: PGDATA
+          value: {{ .Values.postgres.pgdata | quote }}
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        readinessProbe:
+          {{- toYaml .Values.postgres.readinessProbe | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.postgres.livenessProbe | nindent 10 }}
+        resources:
+          {{- toYaml .Values.postgres.resources | nindent 10 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes:
+        {{- toYaml .Values.postgres.storage.accessModes | nindent 8 }}
+      resources:
+        requests:
+          storage: {{ .Values.postgres.storage.size }}

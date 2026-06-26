@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.frontend.name }}
+  namespace: {{ include "devops-app.namespace" . }}
+  labels:
+    {{- include "devops-app.labels" (dict "root" . "component" "frontend") | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "devops-app.selectorLabels" (dict "component" "frontend") | nindent 6 }}
+  strategy:
+    type: {{ .Values.frontend.strategy.type }}
+    rollingUpdate:
+      maxSurge: {{ .Values.frontend.strategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.frontend.strategy.rollingUpdate.maxUnavailable }}
+  template:
+    metadata:
+      labels:
+        {{- include "devops-app.selectorLabels" (dict "component" "frontend") | nindent 8 }}
+    spec:
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.frontend.service.targetPort }}
+        env:
+        - name: BACKEND_URL
+          value: {{ include "devops-app.backendUrl" . | quote }}
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.frontend.readinessProbe | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.frontend.livenessProbe | nindent 10 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.frontend.name }}
+  namespace: {{ include "devops-app.namespace" . }}
+  labels:
+    {{- include "devops-app.labels" (dict "root" . "component" "frontend") | nindent 4 }}
+spec:
+  selector:
+    {{- include "devops-app.selectorLabels" (dict "component" "frontend") | nindent 4 }}
+  ports:
+  - port: {{ .Values.frontend.service.port }}
+    targetPort: {{ .Values.frontend.service.targetPort }}
+  type: {{ .Values.frontend.service.type }}
