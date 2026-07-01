@@ -1,0 +1,114 @@
+# build and deploy 3-tier app
+
+name: 3-tier-build-deploy-advanced
+
+on:
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - '3-tier-app/app/**'
+  workflow_dispatch:
+
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      frontend_image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend
+      frontend_path: 3-tier-app/app/frontend
+      backend_image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend
+      backend_path: 3-tier-app/app/backend
+      aws_region: ap-south-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: setup docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::879381241087:oidc-provider/token.actions.githubusercontent.com
+          aws-region: ${{ env.aws_region }}
+
+      - name: login to ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build frontend image
+        working-directory: ${{ env.frontend_path }}
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -t ${{ env.frontend_image }}:${{ github.sha }} \
+            --cache-from type=registry,ref=${{ env.frontend_image }}:buildcache \
+            --cache-to type=registry,ref=${{ env.frontend_image }}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true \
+            --push .
+
+      - name: Build backend image
+        working-directory: ${{ env.backend_path }}
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -t ${{ env.backend_image }}:${{ github.sha }} \
+            --cache-from type=registry,ref=${{ env.backend_image }}:buildcache \
+            --cache-to type=registry,ref=${{ env.backend_image }}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true \
+            --push .
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    concurrency:
+      group: deploy-argo-3tier
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      path: 3-tier-app/k8s/menifests
+      backend_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend
+      backend_tag: ${{ github.sha }}
+      frontend_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend
+      frontend_tag: ${{ github.sha }}
+      db_migration_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend
+      db_migration_tag: ${{ github.sha }}
+
+    steps:
+      - name: Checkout argo-3tier branch
+        uses: actions/checkout@v3
+        with:
+          ref: argo-3tier
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Install yq
+        uses: mikefarah/yq@v4
+
+      - name: Update backend image
+        working-directory: ${{ env.path }}
+        run: yq -i '.spec.template.spec.containers[0].image = strenv(backend_repo) + ":" + strenv(backend_tag)' backend.yaml
+
+      - name: Update frontend image
+        working-directory: ${{ env.path }}
+        run: yq -i '.spec.template.spec.containers[0].image = strenv(frontend_repo) + ":" + strenv(frontend_tag)' frontend.yaml
+
+      - name: Update db migration image
+        working-directory: ${{ env.path }}
+        run: yq -i '.spec.template.spec.containers[0].image = strenv(db_migration_repo) + ":" + strenv(db_migration_tag)' db-migration.yaml
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No manifest changes to commit."
+          else
+            git commit -m "Update images to ${{ github.sha }}"
+            git push origin argo-3tier
+          fi

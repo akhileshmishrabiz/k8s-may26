@@ -1,0 +1,13 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster              # name of your Postgres cluster
+spec:
+  instances: 1                 # single primary only (avoid extra join/init jobs on fresh nodes)
+
+  storage:                      # main volume — holds the actual database data
+    storageClass: standard      # which StorageClass to provision from (kind's default)
+    size: 1Gi                   # size of the data volume per instance
+
+
+    
