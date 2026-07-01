@@ -10,14 +10,14 @@ on:
   workflow_dispatch:
 
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
 
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: read
-      id-token: write
     env:
       frontend_image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend
       frontend_path: 3-tier-app/app/frontend
