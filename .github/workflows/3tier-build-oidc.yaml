@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: read
       id-token: write
     env:
       frontend_image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend
@@ -34,8 +35,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
-          role-to-assume: arn:aws:iam::879381241087:oidc-provider/token.actions.githubusercontent.com
-          aws-region: ${{ env.aws_region }}
+          role-to-assume: arn:aws:iam::879381241087:role/test-githubactionoidc
+          aws-region: ap-south-1
 
       - name: login to ecr
         uses: aws-actions/amazon-ecr-login@v2
