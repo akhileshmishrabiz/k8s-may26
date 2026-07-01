@@ -1,7 +1,6 @@
 # build and deploy 3-tier app
 
-name: 3-tier-build-deploy-advanced
-
+name: oidc-3-tier-build-deploy
 on:
   # push:
   #   branches:
