@@ -26,10 +26,10 @@ jobs:
       matrix:
         service:
           - name: frontend
-            image: 879381241087.dkr.ecr.${{ env.aws_region }}.amazonaws.com/3tier-devopsdozo-frontend
+            image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend
             path: 3-tier-app/app/frontend
           - name: backend
-            image: 879381241087.dkr.ecr.${{ env.aws_region }}.amazonaws.com/3tier-devopsdozo-backend
+            image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-backend
             path: 3-tier-app/app/backend
     # env:
     #   frontend_image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/3tier-devopsdozo-frontend
@@ -48,7 +48,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: arn:aws:iam::879381241087:role/aws-github-oidc-march26
-          aws-region: ap-south-1
+          aws-region: ${{ env.aws_region }}
 
       - name: login to ecr
         uses: aws-actions/amazon-ecr-login@v2
