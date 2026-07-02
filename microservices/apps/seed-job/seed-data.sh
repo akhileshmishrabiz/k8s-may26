@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_URL="${API_URL:-http://localhost:8080}"
+API_URL="${API_URL:-http://localhost:2222}"
 PREFLIGHT_ATTEMPTS="${PREFLIGHT_ATTEMPTS:-60}"
 PREFLIGHT_SLEEP="${PREFLIGHT_SLEEP:-5}"
 
