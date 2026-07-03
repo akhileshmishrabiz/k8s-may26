@@ -55,9 +55,9 @@ jobs:
 
       # lint stays as a check — formatting is auto-fixed, lint errors still fail the job
       - name: Ruff lint
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4.0.0
         with:
-          args: "check ${{ env.CODE_PATH }}"
+          src: ${{ env.CODE_PATH }}
 
       # install dependencies and run unit tests
       # setup for unit tests -> find the tool used for writing tests in app
