@@ -41,6 +41,7 @@ jobs:
         env:
           DB_LINK: "sqlite:///:memory:"
         run: |
+          cd ${{ env.CODE_PATH }}
           source .venv/bin/activate
           pytest --cov=app --cov-report=xml --cov-report=term-missing
 
