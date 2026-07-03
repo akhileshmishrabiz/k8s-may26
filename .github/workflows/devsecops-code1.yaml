@@ -62,15 +62,15 @@ jobs:
       # install dependencies and run unit tests
       # setup for unit tests -> find the tool used for writing tests in app
       # pytest -> so setup pytest and other dependencies for pytest
-      - name: unit tests
-        env:
-          DB_LINK: "sqlite:///:memory:"
-        run: |
-          cd ${{ env.CODE_PATH }}
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install -r requirements.txt
-          pytest --cov=app --cov-report=xml --cov-report=term-missing
+      # - name: unit tests
+      #   env:
+      #     DB_LINK: "sqlite:///:memory:"
+      #   run: |
+      #     cd ${{ env.CODE_PATH }}
+      #     python -m venv .venv
+      #     source .venv/bin/activate
+      #     pip install -r requirements.txt
+      #     pytest --cov=app --cov-report=xml --cov-report=term-missing
 
       # fast critical-path checks after full unit tests (pytest -m smoke)
       - name: smoke tests
@@ -101,6 +101,31 @@ jobs:
           image-ref: ${{ env.IMAGE_NAME }}:ci
           format: table
           severity: CRITICAL,HIGH
-          vuln-type: OS,LIBRARY
+          vuln-type: 'os,library'
           exit-code: 1
           ignore-unfixed: true
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: unit tests
+        env:
+          DB_LINK: "sqlite:///:memory:"
+        run: |
+          cd ${{ env.CODE_PATH }}
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pytest --cov=app --cov-report=xml --cov-report=term-missing
