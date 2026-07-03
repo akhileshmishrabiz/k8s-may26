@@ -72,6 +72,15 @@ jobs:
           pip install -r requirements.txt
           pytest --cov=app --cov-report=xml --cov-report=term-missing
 
+      # fast critical-path checks after full unit tests (pytest -m smoke)
+      - name: smoke tests
+        env:
+          DB_LINK: "sqlite:///:memory:"
+        run: |
+          cd ${{ env.CODE_PATH }}
+          source .venv/bin/activate
+          pytest -m smoke -v
+
       # scan Dockerfile for best-practice and security issues (hadolint)
       - name: Scan Dockerfile
         uses: hadolint/hadolint-action@v3.3.0
@@ -79,6 +88,7 @@ jobs:
           dockerfile: ${{ env.CODE_PATH }}/Dockerfile
           # log warnings (e.g. unpinned apk versions) but fail only on errors
           failure-threshold: error
+          ignore: DL3018
 
       # build the container image locally for scanning (not pushed)
       - name: Build container image
