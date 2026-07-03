@@ -25,25 +25,21 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # install dependencies
-      - name: Install dependencies
-        run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install -r ${{ env.CODE_PATH }}/requirements.txt
-
+      # install dependencies and run unit tests
       # setup for unit tests -> find the tool used for writing tests in app
       # pytest -> so setup pytest and other dependencies for pytest
-
-
-      # run the tests and fail the pipeline if the tests fail
-      - name: Run tests
+      - name: unit tests
         env:
           DB_LINK: "sqlite:///:memory:"
         run: |
           cd ${{ env.CODE_PATH }}
+          python -m venv .venv
           source .venv/bin/activate
+          pip install -r requirements.txt
           pytest --cov=app --cov-report=xml --cov-report=term-missing
+
+  
+
 
 
       # setup for conatienr scans -> find the tool used for scanning containers in app
