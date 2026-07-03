@@ -13,15 +13,19 @@ env:
   IMAGE_NAME: devsecops-app
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # checkout code
+      # checkout the branch that triggered this run (needed for auto-push)
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       # install python
       - name: Set up Python
@@ -29,12 +33,27 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # lint and format stuff
-      - name: Ruff format check
+      # auto-format code in place, then push back to the same branch
+      - name: Ruff format
         uses: astral-sh/ruff-action@v3
         with:
-          args: "format --check --diff ${{ env.CODE_PATH }}"
+          args: "format ${{ env.CODE_PATH }}"
 
+      - name: Commit and push ruff formatting
+        # skip when this run was triggered by the bot's own format commit
+        if: github.actor != 'github-actions[bot]'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ env.CODE_PATH }}"
+          if git diff --staged --quiet; then
+            echo "No formatting changes to commit."
+          else
+            git commit -m "style: auto-format with ruff [skip ci]"
+            git push origin "HEAD:${{ github.head_ref || github.ref_name }}"
+          fi
+
+      # lint stays as a check — formatting is auto-fixed, lint errors still fail the job
       - name: Ruff lint
         uses: astral-sh/ruff-action@v3
         with:
