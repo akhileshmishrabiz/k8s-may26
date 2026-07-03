@@ -1,0 +1,57 @@
+name: DevSecOps Code1
+# run unit tests + contaienr scans
+# app language -> python -> devsecops/src
+on:
+  # pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  PYTHON_VERSION: '3.13'
+  CODE_PATH: devsecops/src
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # install python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # install dependencies
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r ${{ env.CODE_PATH }}/requirements.txt
+
+      # setup for unit tests -> find the tool used for writing tests in app
+      # pytest -> so setup pytest and other dependencies for pytest
+
+
+      # run the tests and fail the pipeline if the tests fail
+      - name: Run tests
+        env:
+          DB_LINK: "sqlite:///:memory:"
+        run: |
+          source .venv/bin/activate
+          pytest --cov=app --cov-report=xml --cov-report=term-missing
+
+
+      # setup for conatienr scans -> find the tool used for scanning containers in app
+
+
+      # build the container 
+
+
+      # scan the container -> trviy scanner
+
+
+      
