@@ -7,6 +7,12 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+
+    paths:
+      - 'devsecops/src/**'
+      - '.github/workflows/devsecops-code1.yaml'
+
 env:
   PYTHON_VERSION: '3.13'
   CODE_PATH: devsecops/src
