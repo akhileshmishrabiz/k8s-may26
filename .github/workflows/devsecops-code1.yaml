@@ -1,5 +1,5 @@
 name: DevSecOps Code1
-# run unit tests + contaienr scans
+# run unit tests + container scans
 # app language -> python -> devsecops/src
 on:
   # pull_request:
@@ -10,10 +10,10 @@ on:
 env:
   PYTHON_VERSION: '3.13'
   CODE_PATH: devsecops/src
+  IMAGE_NAME: devsecops-app
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   build:
@@ -21,11 +21,11 @@ jobs:
     steps:
       # checkout code
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # install python
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -53,17 +53,24 @@ jobs:
           pip install -r requirements.txt
           pytest --cov=app --cov-report=xml --cov-report=term-missing
 
-  
+      # scan Dockerfile for best-practice and security issues (hadolint)
+      - name: Scan Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ env.CODE_PATH }}/Dockerfile
+          # log warnings (e.g. unpinned apk versions) but fail only on errors
+          failure-threshold: error
 
+      # build the container image locally for scanning (not pushed)
+      - name: Build container image
+        run: docker build -t ${{ env.IMAGE_NAME }}:ci ${{ env.CODE_PATH }}
 
-
-      # setup for conatienr scans -> find the tool used for scanning containers in app
-
-
-      # build the container 
-
-
-      # scan the container -> trviy scanner
-
-
-      
+      # scan built image for OS and dependency vulnerabilities (trivy)
+      - name: Scan container with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:ci
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: true

@@ -559,9 +559,11 @@ def ensure_schema():
 
     db.session.commit()
 
-    if Retro.query.filter(
-        (Retro.share_token.is_(None)) | (Retro.share_token == "")
-    ).limit(1).first():
+    if (
+        Retro.query.filter((Retro.share_token.is_(None)) | (Retro.share_token == ""))
+        .limit(1)
+        .first()
+    ):
         for retro in Retro.query.filter(
             (Retro.share_token.is_(None)) | (Retro.share_token == "")
         ).all():

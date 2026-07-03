@@ -3,7 +3,6 @@ from datetime import datetime
 from flask import abort
 from flask_login import current_user
 from sqlalchemy import func
-from sqlalchemy.orm import joinedload
 
 from app import db
 from app.models.models import Incident, OnCallSchedule

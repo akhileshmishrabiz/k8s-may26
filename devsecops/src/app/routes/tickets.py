@@ -126,9 +126,7 @@ def list_tickets():
     base_query = accessible_tickets_query()
     query = _apply_ticket_filters(base_query)
     tickets = (
-        query.options(*ticket_list_options())
-        .order_by(Ticket.updated_at.desc())
-        .all()
+        query.options(*ticket_list_options()).order_by(Ticket.updated_at.desc()).all()
     )
 
     status_counts, total_ticket_count = _status_counts(base_query, TICKET_STATUSES)

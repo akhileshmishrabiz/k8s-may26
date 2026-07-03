@@ -1,4 +1,3 @@
-import re
 import uuid
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
@@ -18,7 +17,6 @@ from app.models.models import (
 from app.routes.helpers import (
     admin_required,
     new_share_token,
-    safe_next_url,
     unique_guest_username,
 )
 
@@ -71,7 +69,9 @@ def _liked_card_ids_for_retro(retro_id):
 
 
 def _card_item(card, liked_ids=None):
-    liked_ids = liked_ids if liked_ids is not None else _liked_card_ids_for_retro(card.retro_id)
+    liked_ids = (
+        liked_ids if liked_ids is not None else _liked_card_ids_for_retro(card.retro_id)
+    )
     return {
         "card": card,
         "like_count": len(card.likes),

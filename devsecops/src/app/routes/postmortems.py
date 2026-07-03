@@ -17,7 +17,6 @@ from app.routes.incident_helpers import get_incident_for_user, log_incident_even
 from app.routes.team_helpers import (
     next_ticket_number,
     team_member_users,
-    user_teams,
     validate_assignee_for_team,
 )
 

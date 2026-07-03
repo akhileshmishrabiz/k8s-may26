@@ -69,7 +69,7 @@ def admin_client(client, app):
 
     client.post(
         "/login",
-            data={"username": "livingdevops", "password": "LivingDevops1!"},
+        data={"username": "livingdevops", "password": "LivingDevops1!"},
     )
     return client
 
@@ -113,7 +113,7 @@ def test_regular_user_sees_seeded_retros(auth_client):
     response = auth_client.get("/retro", follow_redirects=True)
     assert response.status_code == 200
     assert b"ECS Day 9" in response.data
-    
+
     assert b"No retros yet" not in response.data
 
 
