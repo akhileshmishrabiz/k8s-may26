@@ -237,7 +237,8 @@ build/
 *.out
 /bin/
 /vendor/
-
+.vem=nv
+.vem=nv/
 # Keep .env.example tracked; .env is ignored above
 !.env.example
 

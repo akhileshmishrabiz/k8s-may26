@@ -18,7 +18,6 @@ from app.models.models import (
     Team,
     TeamMember,
     Incident,
-    Postmortem,
     OnCallSchedule,
     SpeakWheel,
     SpeakWheelName,
@@ -70,7 +69,7 @@ def admin_client(client, app):
 
     client.post(
         "/login",
-        data={"username": "livingdevops", "password": "LivingDevops1!"},
+            data={"username": "livingdevops", "password": "LivingDevops1!"},
     )
     return client
 
@@ -98,6 +97,7 @@ def test_devops_retros_seeded(app):
     with app.app_context():
         retros = Retro.query.all()
         assert len(retros) >= 5
+
         titles = {r.title for r in retros}
         assert "ECS Day 9 — Terraform Ship Retro" in titles
         assert "Kubernetes Pod Crash Bingo" in titles
@@ -113,6 +113,7 @@ def test_regular_user_sees_seeded_retros(auth_client):
     response = auth_client.get("/retro", follow_redirects=True)
     assert response.status_code == 200
     assert b"ECS Day 9" in response.data
+    
     assert b"No retros yet" not in response.data
 
 
@@ -365,10 +366,12 @@ def test_devops_teams_and_tickets_seeded(app):
         assert TeamMember.query.filter_by(team_id=team.id).count() >= 2
 
         tickets = Ticket.query.filter_by(team_id=team.id).all()
+
         assert len(tickets) >= 6
         dev1 = Ticket.query.filter_by(team_id=team.id, ticket_number=1).first()
         assert dev1 is not None
         assert dev1.key == "DEV-1"
+
         assert dev1.subtasks
         assert TicketComment.query.filter_by(ticket_id=dev1.id).count() >= 2
 
@@ -858,4 +861,3 @@ def test_games_submit_score_and_leaderboard(auth_client, app):
     api_lb = auth_client.get("/games/api/leaderboard")
     assert api_lb.status_code == 200
     assert len(api_lb.get_json()) >= 1
-
