@@ -72,5 +72,6 @@ jobs:
           image-ref: ${{ env.IMAGE_NAME }}:ci
           format: table
           severity: CRITICAL,HIGH
+          vuln-type: OS,LIBRARY
           exit-code: 1
           ignore-unfixed: true
