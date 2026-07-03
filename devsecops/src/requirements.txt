@@ -11,3 +11,4 @@ prometheus-client
 python-json-logger
 gunicorn              
 pytest
+pytest-cov
