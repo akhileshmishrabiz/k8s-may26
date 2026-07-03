@@ -78,7 +78,9 @@ jobs:
           DB_LINK: "sqlite:///:memory:"
         run: |
           cd ${{ env.CODE_PATH }}
+          python -m venv .venv
           source .venv/bin/activate
+          pip install -r requirements.txt
           pytest -m smoke -v
 
       # scan Dockerfile for best-practice and security issues (hadolint)
