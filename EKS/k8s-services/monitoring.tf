@@ -319,7 +319,7 @@ resource "helm_release" "kube_prometheus_grafana_stack" {
 #         "alb.ingress.kubernetes.io/actions.ssl-redirect" = "{\"Type\": \"redirect\", \"RedirectConfig\": {\"Protocol\": \"HTTPS\", \"Port\": \"443\", \"StatusCode\": \"HTTP_301\"}}"
 
 #         # Group name - all ingresses with the same group share a single ALB
-#         "alb.ingress.kubernetes.io/group.name" = "k8sbatch-shared-alb"
+#         "alb.ingress.kubernetes.io/group.name" = "eksmay26-shared-alb"
 #       }
 
 #       labels = {
@@ -494,7 +494,7 @@ resource "helm_release" "loki" {
 #         "alb.ingress.kubernetes.io/actions.ssl-redirect" = "{\"Type\": \"redirect\", \"RedirectConfig\": {\"Protocol\": \"HTTPS\", \"Port\": \"443\", \"StatusCode\": \"HTTP_301\"}}"
 
 #         # Group name - all ingresses with the same group share a single ALB
-#         "alb.ingress.kubernetes.io/group.name" = "k8sbatch-shared-alb"
+#         "alb.ingress.kubernetes.io/group.name" = "eksmay26-shared-alb"
 #       }
 
 #       labels = {

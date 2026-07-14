@@ -103,7 +103,7 @@ resource "kubernetes_ingress_v1" "vault" {
       "alb.ingress.kubernetes.io/ssl-policy"           = "ELBSecurityPolicy-TLS-1-2-2017-01"
       "alb.ingress.kubernetes.io/certificate-arn"      = aws_acm_certificate.microservices_cert.arn
       "alb.ingress.kubernetes.io/actions.ssl-redirect" = "{\"Type\": \"redirect\", \"RedirectConfig\": {\"Protocol\": \"HTTPS\", \"Port\": \"443\", \"StatusCode\": \"HTTP_301\"}}"
-      "alb.ingress.kubernetes.io/group.name"           = "k8sbatch-shared-alb"
+      "alb.ingress.kubernetes.io/group.name"           = "eksmay26-shared-alb"
     }
   }
 
@@ -112,12 +112,12 @@ resource "kubernetes_ingress_v1" "vault" {
 
     tls {
       hosts = [
-        "vault.${var.domain_name}"
+        "vault.${var.app_subdomain}.${var.domain_name}"
       ]
     }
 
     rule {
-      host = "vault.${var.domain_name}"
+      host = "vault.${var.app_subdomain}.${var.domain_name}"
 
       http {
         path {
