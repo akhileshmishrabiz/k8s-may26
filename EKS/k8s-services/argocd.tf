@@ -44,7 +44,7 @@ resource "kubernetes_ingress_v1" "argocd_ingress_tls" {
       # SSL/TLS configuration
       "alb.ingress.kubernetes.io/listen-ports"        = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
       "alb.ingress.kubernetes.io/ssl-redirect"        = "443"
-      "alb.ingress.kubernetes.io/certificate-arn"     = aws_acm_certificate.argocd_cert.arn
+      "alb.ingress.kubernetes.io/certificate-arn"     = aws_acm_certificate.microservices_cert.arn
 
       # Health check configuration
       "alb.ingress.kubernetes.io/healthcheck-path"     = "/"
@@ -127,7 +127,7 @@ resource "aws_acm_certificate" "microservices_cert" {
 # Create Route53 record for ACM certificate validation
 resource "aws_route53_record" "cert_validation" {
   for_each = {
-    for dvo in aws_acm_certificate.argocd_cert.domain_validation_options : dvo.domain_name => {
+    for dvo in aws_acm_certificate.microservices_cert.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -144,7 +144,7 @@ resource "aws_route53_record" "cert_validation" {
 
 # Validate the ACM certificate
 resource "aws_acm_certificate_validation" "app" {
-  certificate_arn         = aws_acm_certificate.argocd_cert.arn
+  certificate_arn         = aws_acm_certificate.microservices_cert.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 

@@ -65,3 +65,22 @@ variable "cnpg_namespace" {
 variable "aws_alb_zoneid" {
   default = "ZP97RAFLXTNZK"
 }
+
+variable "region" {
+  default = "ap-south-1"
+}
+
+
+# karpenter
+
+variable "karpenter_namespace" {
+  default = "kube-system"
+}
+
+variable "karpenter_sa" {
+  default = "karpenter"
+}
+
+variable "karpenter_version" {
+  default = "1.5.0"
+}
