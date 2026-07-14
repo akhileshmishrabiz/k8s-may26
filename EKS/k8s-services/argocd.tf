@@ -102,15 +102,27 @@ data "aws_route53_zone" "main" {
 }
 
 # Create the certificate
+# use with 3-tier app only
+# resource "aws_acm_certificate" "argocd_cert" {
+#   domain_name       = "argocd.${var.app_subdomain}.${var.domain_name}"
+#   validation_method = "DNS"
 
-resource "aws_acm_certificate" "argocd_cert" {
-  domain_name       = "argocd.${var.app_subdomain}.${var.domain_name}"
+#   tags = {
+#     Name = "argocd-cert"
+#   }
+# }
+# *.devopsdozo.livingdevops.org, argocd.devopsdozo.livingdevops.org, grafana.devopsdozo.livingdevops.org, prometheus.devopsdozo.livingdevops.org, alertmanager.devopsdozo.livingdevops.org
+## use it in microservices app only
+resource "aws_acm_certificate" "microservices_cert" {
+  domain_name       = "*.${var.app_subdomain}.${var.domain_name}"
   validation_method = "DNS"
 
   tags = {
-    Name = "argocd-cert"
+    Name = "microservices-cert"
   }
 }
+
+
 
 # Create Route53 record for ACM certificate validation
 resource "aws_route53_record" "cert_validation" {

@@ -3,9 +3,9 @@ name: DevSecOps Code1
 # app language -> python -> devsecops/src
 on:
   # pull_request:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
 
   workflow_dispatch:
 

@@ -50,3 +50,18 @@ variable "prefix" {
   type = string
   default = "3tier-devopsdozo"
 }
+
+
+## for cnpg 
+variable "cnpg_chart_version" {
+  description = "CloudNativePG helm chart version"
+  default     = "0.22.1"
+}
+
+variable "cnpg_namespace" {
+  default = "cnpg-system"
+}
+
+variable "aws_alb_zoneid" {
+  default = "ZP97RAFLXTNZK"
+}

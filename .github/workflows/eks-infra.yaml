@@ -31,6 +31,10 @@ on:
         required: false
         type: string
         default: "1.12.1"
+permissions:
+  contents: write
+  id-token: write
+
 
 jobs:
   infra_apply_destroy:
