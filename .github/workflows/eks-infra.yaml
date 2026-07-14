@@ -47,9 +47,15 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # if oidc setup didnt happen, use the access key id and secret access key
+          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws_region }}
+          # if oidc setup happened, use the role to assume
+          role-to-assume: arn:aws:iam::879381241087:role/aws-github-oidc-march26
+          role-session-name: terraform-session
+
+
 
       - name: Initialize Terraform
         working-directory: ${{ inputs.infra_path }}

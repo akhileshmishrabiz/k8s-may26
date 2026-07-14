@@ -1,0 +1,56 @@
+{{- if .Values.cnpg.enabled }}
+{{- range .Values.cnpg.databases }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .name }}
+  namespace: {{ include "ecommerce.namespace" $ }}
+  labels:
+    app: {{ .name }}-db
+    {{- include "ecommerce.labels" $ | nindent 4 }}
+spec:
+  instances: {{ $.Values.cnpg.instances }}
+
+  imageName: {{ $.Values.cnpg.image }}
+
+  bootstrap:
+    initdb:
+      database: {{ .name }}
+      owner: ecommerce_user
+      secret:
+        name: db-credentials
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+
+  postgresql:
+    parameters:
+      max_connections: {{ $.Values.cnpg.postgresql.max_connections | quote }}
+      shared_buffers: {{ $.Values.cnpg.postgresql.shared_buffers }}
+      effective_cache_size: {{ $.Values.cnpg.postgresql.effective_cache_size }}
+      work_mem: {{ $.Values.cnpg.postgresql.work_mem }}
+      maintenance_work_mem: {{ $.Values.cnpg.postgresql.maintenance_work_mem }}
+      log_statement: "ddl"
+      log_connections: "on"
+      log_disconnections: "on"
+
+  storage:
+    size: {{ $.Values.cnpg.storage }}
+    storageClass: {{ $.Values.global.storageClass }}
+
+  resources:
+    requests:
+      memory: {{ $.Values.cnpg.resources.requests.memory }}
+      cpu: {{ $.Values.cnpg.resources.requests.cpu }}
+    limits:
+      memory: {{ $.Values.cnpg.resources.limits.memory }}
+      cpu: {{ $.Values.cnpg.resources.limits.cpu }}
+
+  monitoring:
+    enablePodMonitor: {{ $.Values.cnpg.monitoring.enablePodMonitor }}
+
+  primaryUpdateStrategy: unsupervised
+  failoverDelay: 0
+  switchoverDelay: 10
+{{- end }}
+{{- end }}
