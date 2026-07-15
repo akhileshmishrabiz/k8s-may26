@@ -23,32 +23,32 @@ jobs:
         service:
           - name: product-service
             ecr_repo: ecommerce-product-service
-            path: apps/services/product-service/
+            path: app/services/product-service/
           - name: user-service
             ecr_repo: ecommerce-user-service
-            path: apps/services/user-service/
+            path: app/services/user-service/
           - name: cart-service
             ecr_repo: ecommerce-cart-service
-            path: apps/services/cart-service/
+            path: app/services/cart-service/
           - name: order-service
             ecr_repo: ecommerce-order-service
-            path: apps/services/order-service/
+            path: app/services/order-service/
           - name: payment-service
             ecr_repo: ecommerce-payment-service
-            path: apps/services/payment-service/
+            path: app/services/payment-service/
           - name: notification-service
             ecr_repo: ecommerce-notification-service
-            path: apps/services/notification-service/
+            path: app/services/notification-service/
           - name: api-gateway
             ecr_repo: ecommerce-api-gateway
-            path: apps/api-gateway/
+            path: app/api-gateway/
           - name: frontend
             ecr_repo: ecommerce-frontend
-            path: apps/frontend/
+            path: app/frontend/
 
           - name: seed_data
             ecr_repo: ecommerce-seed
-            path: apps/seed-job/
+            path: app/seed-job/
 
     outputs:
       image_tag: ${{ github.sha }}
@@ -102,7 +102,7 @@ jobs:
       - name: Update Helm values with new image tags
         run: |
           IMAGE_TAG="${{ github.sha }}"
-          VALUES_FILE="eks-microservice-implementation/helm-ecommerce/values.yaml"
+          VALUES_FILE="eks-microservices/helm/values.yaml"
 
           yq -i '.services.productService.image = "'"${{ env.ECR_REGISTRY }}/ecommerce-product-service:${IMAGE_TAG}"'"' $VALUES_FILE
           yq -i '.services.userService.image = "'"${{ env.ECR_REGISTRY }}/ecommerce-user-service:${IMAGE_TAG}"'"' $VALUES_FILE
@@ -119,6 +119,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add eks-microservice-implementation/helm-ecommerce/values.yaml
+          git add eks-microservices/helm/values.yaml
           git commit -m "chore: update image tags to ${{ github.sha }}" || echo "No changes"
           git push

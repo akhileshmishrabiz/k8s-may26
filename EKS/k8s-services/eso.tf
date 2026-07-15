@@ -1,19 +1,19 @@
-resource "kubernetes_namespace_v1" "external_secrets" {
+resource "kubernetes_namespace_v1" "eso" {
   metadata {
-    name = "external-secrets"
+    name = "eso"
   }
 }
 
-resource "helm_release" "external_secrets" {
-  name       = "external-secrets"
+resource "helm_release" "eso" {
+  name       = "eso"
   repository = "https://charts.external-secrets.io"
   chart      = "external-secrets"
-  namespace  = kubernetes_namespace_v1.external_secrets.metadata[0].name
+  namespace  = kubernetes_namespace_v1.eso.metadata[0].name
 
   set = [
     {
       name  = "installCRDs"
-      value = "true"
+      value = "false"
     }
   ]
 }
