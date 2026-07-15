@@ -91,6 +91,7 @@ jobs:
     needs: build-and-push
     permissions:
       contents: write
+      id-token: write
 
     steps:
       - name: Checkout code
