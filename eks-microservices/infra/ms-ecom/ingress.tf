@@ -1,76 +1,78 @@
-# resource "kubernetes_ingress_v1" "ecommerce" {
-#   metadata {
-#     name      = var.ingress_name
-#     namespace = var.namespace
+# ALB ingress resources for ecommerce services.
+# Namespace is created by namespace.tf in this module.
+# Ingress is managed by Terraform (Helm ingress is disabled in argocd-app.tf).
 
-#     annotations = {
-#       # Internet-facing ALB
-#       "alb.ingress.kubernetes.io/scheme"      = "internet-facing"
-#       "alb.ingress.kubernetes.io/target-type" = "ip"
+locals {
+  # Wildcard cert is *.app_subdomain.domain (e.g. *.devopsdozo.livingdevops.org).
+  ingress_services = var.enable_ingress ? {
+    for svc_key, svc_cfg in var.ingress_services :
+    svc_key => {
+      namespace         = var.namespace
+      environment_label = var.environment_label
+      svc_key           = svc_key
+      host = coalesce(
+        try(svc_cfg.host, null),
+        "${coalesce(try(svc_cfg.host_prefix, null), svc_key == "frontend" ? var.subdomain : svc_key)}.${var.app_subdomain}.${var.domain_name}"
+      )
+      path             = try(svc_cfg.path, "/")
+      path_type        = try(svc_cfg.path_type, "Prefix")
+      service_name     = svc_cfg.service_name
+      service_port     = svc_cfg.service_port
+      healthcheck_path = try(svc_cfg.healthcheck_path, "/health")
+    }
+    if try(svc_cfg.enabled, true)
+  } : {}
+}
 
-#       # Health check
-#       "alb.ingress.kubernetes.io/healthcheck-path" = "/health"
+resource "kubernetes_ingress_v1" "service" {
+  for_each = local.ingress_services
 
-#       # Listen on both HTTP and HTTPS
-#       "alb.ingress.kubernetes.io/listen-ports" = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+  metadata {
+    name      = "${each.key}-ingress"
+    namespace = each.value.namespace
 
-#       # Redirect HTTP → HTTPS
-#       "alb.ingress.kubernetes.io/ssl-redirect" = "443"
+    annotations = {
+      "alb.ingress.kubernetes.io/scheme"                   = "internet-facing"
+      "alb.ingress.kubernetes.io/target-type"              = "ip"
+      "alb.ingress.kubernetes.io/listen-ports"             = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+      "alb.ingress.kubernetes.io/ssl-redirect"             = "443"
+      "alb.ingress.kubernetes.io/certificate-arn"          = local.acm_cert_arn
+      "alb.ingress.kubernetes.io/healthcheck-path"         = each.value.healthcheck_path
+      "alb.ingress.kubernetes.io/healthcheck-protocol"     = "HTTP"
+      "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
+      "alb.ingress.kubernetes.io/ssl-policy"               = "ELBSecurityPolicy-TLS-1-2-2017-01"
+      "alb.ingress.kubernetes.io/tags"                     = "Environment=${each.value.environment_label},ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
+      "alb.ingress.kubernetes.io/group.name"               = var.alb_group_name
+    }
+  }
 
-#       # SSL policy
-#       "alb.ingress.kubernetes.io/ssl-policy" = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  spec {
+    ingress_class_name = var.ingress_class_name
 
-#       # ACM certificate
-#       "alb.ingress.kubernetes.io/certificate-arn" = var.acm_cert_arn
+    tls {
+      hosts = [each.value.host]
+    }
 
-#       # HTTP 301 redirect action
-#       "alb.ingress.kubernetes.io/actions.ssl-redirect" = "{\"Type\": \"redirect\", \"RedirectConfig\": {\"Protocol\": \"HTTPS\", \"Port\": \"443\", \"StatusCode\": \"HTTP_301\"}}"
+    rule {
+      host = each.value.host
 
-#       # Share the same ALB as ArgoCD
-#       "alb.ingress.kubernetes.io/group.name" = var.alb_group_name
-#     }
-#   }
+      http {
+        path {
+          path      = each.value.path
+          path_type = each.value.path_type
 
-#   spec {
-#     ingress_class_name = var.ingress_class_name
+          backend {
+            service {
+              name = each.value.service_name
+              port {
+                number = each.value.service_port
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
-#     # TLS block
-#     tls {
-#       hosts = [
-#         "${var.subdomain}.${var.domain_name}"
-#       ]
-#     }
-
-#     rule {
-#       host = "${var.subdomain}.${var.domain_name}"
-
-#       http {
-#         path {
-#           path      = "/api"
-#           path_type = "Prefix"
-#           backend {
-#             service {
-#               name = var.api_gateway_service_name
-#               port {
-#                 number = var.service_port
-#               }
-#             }
-#           }
-#         }
-
-#         path {
-#           path      = "/"
-#           path_type = "Prefix"
-#           backend {
-#             service {
-#               name = var.frontend_service_name
-#               port {
-#                 number = var.service_port
-#               }
-#             }
-#           }
-#         }
-#       }
-#     }
-#   }
-# }
+  depends_on = [kubernetes_namespace_v1.ecommerce]
+}

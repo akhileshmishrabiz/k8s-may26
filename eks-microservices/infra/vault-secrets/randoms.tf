@@ -1,5 +1,4 @@
-# All app credentials are generated locally and never committed.
-# `special = false` keeps them safe in PG connection strings and shell exports.
+# Credentials — never committed.
 
 resource "random_password" "db" {
   length  = 24

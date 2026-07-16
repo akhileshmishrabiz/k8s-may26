@@ -1,3 +1,8 @@
+output "namespace" {
+  description = "Target namespace for ecommerce secrets"
+  value       = var.namespace
+}
+
 output "db_user" {
   value = var.db_user
 }
@@ -27,7 +32,7 @@ output "jwt_secret" {
 }
 
 output "vault_paths" {
-  description = "KV v2 paths terraform writes to (read with: vault kv get <path>)"
+  description = "KV v2 paths terraform writes to"
   value = [
     "secret/ecommerce/database",
     "secret/ecommerce/redis",

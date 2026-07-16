@@ -1,10 +1,9 @@
-# Maps each K8s secret the chart consumes to the Vault path + property it sources from.
+# Maps each K8s secret the chart consumes to Vault paths under secret/ecommerce/.
 locals {
   external_secrets = {
     "db-credentials" = [
       { secretKey = "POSTGRES_USER", key = "secret/data/ecommerce/database", property = "username" },
       { secretKey = "POSTGRES_PASSWORD", key = "secret/data/ecommerce/database", property = "password" },
-      # CNPG bootstrap.initdb.secret expects username/password keys (same Vault source).
       { secretKey = "username", key = "secret/data/ecommerce/database", property = "username" },
       { secretKey = "password", key = "secret/data/ecommerce/database", property = "password" },
     ]
@@ -28,8 +27,20 @@ locals {
   }
 }
 
-# Vault auth token ESO reads from. Lives in the external-secrets namespace
-# alongside the ESO controller (deployed by eks/k8s-services/vault-eso/).
+resource "kubernetes_namespace_v1" "external_secrets" {
+  metadata {
+    name = var.external_secrets_namespace
+  }
+}
+
+data "kubernetes_namespace_v1" "ecommerce" {
+  count = var.enable_eso_secrets ? 1 : 0
+
+  metadata {
+    name = var.namespace
+  }
+}
+
 resource "kubernetes_secret_v1" "vault_token" {
   count = var.enable_eso_secrets ? 1 : 0
 
@@ -83,7 +94,7 @@ resource "kubernetes_manifest" "external_secret" {
     kind       = "ExternalSecret"
     metadata = {
       name      = each.key
-      namespace = var.ecommerce_namespace
+      namespace = var.namespace
     }
     spec = {
       refreshInterval = "1h"
@@ -107,5 +118,8 @@ resource "kubernetes_manifest" "external_secret" {
     }
   }
 
-  depends_on = [kubernetes_manifest.cluster_secret_store]
+  depends_on = [
+    kubernetes_manifest.cluster_secret_store,
+    data.kubernetes_namespace_v1.ecommerce,
+  ]
 }

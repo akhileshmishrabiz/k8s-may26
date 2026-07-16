@@ -1,16 +1,23 @@
 variable "cluster_name" {
-  default = "eks-cluster"
+  description = "EKS cluster name for the Kubernetes provider"
+  default     = "eks-cluster"
 }
 
 variable "region" {
   default = "ap-south-1"
 }
 
+variable "namespace" {
+  description = "Kubernetes namespace for ESO ExternalSecrets"
+  type        = string
+  default     = "ecommerce"
+}
+
 # Vault URL terraform talks to. Defaults to the public ALB at vault.livingdevops.org
 # (deployed by eks/k8s-services/vault-eso/). Override for port-forward or other setups.
 variable "vault_addr" {
   description = "Vault server address terraform writes secrets to"
-  default     = "https://vault.livingdevops.org"
+  default     = "https://vault.devopsdozo.livingdevops.org/"
 }
 
 variable "vault_token" {
@@ -26,13 +33,9 @@ variable "vault_in_cluster_addr" {
 }
 
 variable "enable_eso_secrets" {
-  description = "When true, also create the ClusterSecretStore + ExternalSecrets that bind ESO to Vault and materialise K8s secrets in the ecommerce namespace. ESO CRDs and the ecommerce namespace must already exist."
+  description = "When true, also create the ClusterSecretStore + ExternalSecrets that bind ESO to Vault and materialise K8s secrets in the ecommerce namespace."
   type        = bool
   default     = true
-}
-
-variable "ecommerce_namespace" {
-  default = "ecommerce"
 }
 
 variable "external_secrets_namespace" {
@@ -64,11 +67,11 @@ variable "razorpay_webhook_secret" {
 }
 
 variable "aws_access_key_id" {
-  default   = "AKIAIOSFODNN7MPLE"
+  default   = "DSSffghffg"
   sensitive = true
 }
 
 variable "aws_secret_access_key" {
-  default   = "wJalrasaasnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  default   = "wJalrasaasnFEMI/fggh/bPxRfiCYEXAMPLEKEY"
   sensitive = true
 }
