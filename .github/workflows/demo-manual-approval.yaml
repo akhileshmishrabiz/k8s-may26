@@ -10,17 +10,17 @@ on:
         options:
           - dev
           - prod
-environment:
-  ENV: ${{ inputs.env }}
-    
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}
+    env:
+      ENV: ${{ inputs.env }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Deploy to ${{ inputs.env }}
         run: |
-          echo "Deploying to ${{ inputs.env }} environment"
           echo "Deploying to ${{ inputs.env }} environment"
