@@ -10,7 +10,8 @@ on:
         options:
           - dev
           - prod
-
+environment:
+  ENV: ${{ inputs.env }}
     
 jobs:
   deploy:
