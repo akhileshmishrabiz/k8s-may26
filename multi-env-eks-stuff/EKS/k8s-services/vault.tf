@@ -1,46 +1,20 @@
-# Vault UI/API at vault.<app_subdomain>.<domain> (same pattern as argocd/grafana).
-
-# ALB controller populates ingress.status asynchronously after create.
-resource "time_sleep" "wait_for_vault_ingress" {
-  depends_on      = [kubernetes_ingress_v1.vault]
-  create_duration = "60s"
-}
-
-data "kubernetes_ingress_v1" "vault" {
-  metadata {
-    name      = kubernetes_ingress_v1.vault.metadata[0].name
-    namespace = kubernetes_ingress_v1.vault.metadata[0].namespace
-  }
-
-  depends_on = [time_sleep.wait_for_vault_ingress]
-}
-
-resource "aws_route53_record" "vault" {
-  zone_id = data.aws_route53_zone.main.zone_id
-  name    = "vault.${var.app_subdomain}.${var.domain_name}"
-  type    = "A"
-
-  alias {
-    name                   = data.kubernetes_ingress_v1.vault.status[0].load_balancer[0].ingress[0].hostname
-    zone_id                = var.aws_alb_zoneid
-    evaluate_target_health = true
-  }
-
-  depends_on = [data.kubernetes_ingress_v1.vault]
-}
-
+# Vault — deployed on dev only (see locals.deploy_vault). Prod connects to dev Vault via ALB.
 
 resource "kubernetes_namespace_v1" "vault" {
+  count = local.deploy_vault ? 1 : 0
+
   metadata {
-    name = "vault"
+    name = local.vault_namespace
   }
 }
 
 resource "helm_release" "vault" {
+  count = local.deploy_vault ? 1 : 0
+
   name       = "vault"
   repository = "https://helm.releases.hashicorp.com"
   chart      = "vault"
-  namespace  = kubernetes_namespace_v1.vault.metadata[0].name
+  namespace  = kubernetes_namespace_v1.vault[0].metadata[0].name
 
   values = [yamlencode({
     global = {
@@ -50,7 +24,6 @@ resource "helm_release" "vault" {
     server = {
       enabled = true
 
-      # Dev mode - auto-unsealed, in-memory storage. Lab use only.
       dev = {
         enabled      = true
         devRootToken = "root"
@@ -67,7 +40,6 @@ resource "helm_release" "vault" {
         }
       }
 
-      # ClusterIP - ALB ingress handles external traffic
       service = {
         type = "ClusterIP"
       }
@@ -81,7 +53,6 @@ resource "helm_release" "vault" {
       enabled = true
     }
 
-    # ESO handles secret sync; sidecar injector not needed
     injector = {
       enabled = false
     }
@@ -89,21 +60,23 @@ resource "helm_release" "vault" {
 }
 
 resource "kubernetes_ingress_v1" "vault" {
+  count = local.deploy_vault ? 1 : 0
+
   metadata {
-    name      = "vault-ui-ingress"
-    namespace = kubernetes_namespace_v1.vault.metadata[0].name
+    name      = "${var.env}-vault-ui-ingress"
+    namespace = kubernetes_namespace_v1.vault[0].metadata[0].name
 
     annotations = {
       "alb.ingress.kubernetes.io/scheme"                   = "internet-facing"
       "alb.ingress.kubernetes.io/target-type"              = "ip"
       "alb.ingress.kubernetes.io/listen-ports"             = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
       "alb.ingress.kubernetes.io/ssl-redirect"             = "443"
-      "alb.ingress.kubernetes.io/certificate-arn"          = aws_acm_certificate.microservices_cert.arn
+      "alb.ingress.kubernetes.io/certificate-arn"          = local.acm_cert_arn
       "alb.ingress.kubernetes.io/healthcheck-path"         = "/v1/sys/health?standbyok=true&uninitcode=200"
       "alb.ingress.kubernetes.io/healthcheck-protocol"     = "HTTP"
       "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
-      "alb.ingress.kubernetes.io/tags"                       = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
-      "alb.ingress.kubernetes.io/group.name"                 = var.alb_group_name
+      "alb.ingress.kubernetes.io/tags"                     = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
+      "alb.ingress.kubernetes.io/group.name"               = local.alb_group_name
     }
   }
 
@@ -138,8 +111,41 @@ resource "kubernetes_ingress_v1" "vault" {
   }
 
   depends_on = [
-    helm_release.vault,
-    aws_acm_certificate_validation.app,
+    helm_release.vault[0],
+    aws_acm_certificate_validation.app[0],
   ]
 }
 
+resource "time_sleep" "wait_for_vault_ingress" {
+  count = local.deploy_vault ? 1 : 0
+
+  depends_on      = [kubernetes_ingress_v1.vault[0]]
+  create_duration = "60s"
+}
+
+data "kubernetes_ingress_v1" "vault" {
+  count = local.deploy_vault ? 1 : 0
+
+  metadata {
+    name      = kubernetes_ingress_v1.vault[0].metadata[0].name
+    namespace = kubernetes_ingress_v1.vault[0].metadata[0].namespace
+  }
+
+  depends_on = [time_sleep.wait_for_vault_ingress]
+}
+
+resource "aws_route53_record" "vault" {
+  count = local.deploy_vault ? 1 : 0
+
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "vault.${var.app_subdomain}.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = data.kubernetes_ingress_v1.vault[0].status[0].load_balancer[0].ingress[0].hostname
+    zone_id                = var.aws_alb_zoneid
+    evaluate_target_health = true
+  }
+
+  depends_on = [data.kubernetes_ingress_v1.vault]
+}

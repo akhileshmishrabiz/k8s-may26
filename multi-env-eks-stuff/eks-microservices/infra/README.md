@@ -1,3 +1,18 @@
+# EKS cluster 
+
+#Dev env
+```bash
+terraform init -backend-config=vars/dev.tfbackend
+terraform apply -var-file=vars/dev.tfvars
+``
+
+
+#prod env
+```bash
+terraform init -backend-config=vars/prod.tfbackend
+terraform apply -var-file=vars/prod.tfvars
+``
+
 # E-commerce Platform Infra
 
 Terraform modules the ecommerce platform depends on. Apply them in order before deploying microservices.

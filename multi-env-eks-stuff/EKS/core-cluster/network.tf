@@ -2,7 +2,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "v6.6.0"
 
-  name = var.vpc_name
+  name = local.vpc_name
   cidr = var.vpc_cidr
 
   azs             = ["${var.aws_region}a", "${var.aws_region}b", "${var.aws_region}c"]
@@ -18,18 +18,18 @@ module "vpc" {
 
   # Required tags for EKS cluster subnet discovery
   public_subnet_tags = {
-    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
     "kubernetes.io/role/elb"                        = "1"
   }
 
   private_subnet_tags = {
-    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
     "kubernetes.io/role/internal-elb"               = "1"
   }
 
   tags = {
     Terraform        = "true"
-    Environment      = "dev"
+    Environment      = var.env
     terraform_source = "eks/eks-infra/network.tf"
   }
 }

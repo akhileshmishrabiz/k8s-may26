@@ -2,6 +2,17 @@
 
 
 # vpc id
+variable "env" {
+  description = "Environment key — prefixed on all resource names (dev → dev-, prod → prod-)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "prod"], var.env)
+    error_message = "env must be dev or prod."
+  }
+}
+
 variable "vpc_name" {
   description = "The ID of the VPC"
   type = string
@@ -89,4 +100,41 @@ variable "karpenter_sa" {
 
 variable "karpenter_version" {
   default = "1.5.0"
+}
+
+# ---------------------------------------------------------------------------
+# Platform services — ArgoCD, Vault, monitoring stack (dev only by default)
+# Prod EKS skips these and connects to the dev cluster instances.
+# ---------------------------------------------------------------------------
+
+variable "platform_env" {
+  description = "Environment where ArgoCD, Vault, and monitoring are deployed (shared by prod)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "prod"], var.platform_env)
+    error_message = "platform_env must be dev or prod."
+  }
+}
+
+variable "enable_argocd" {
+  description = "Deploy ArgoCD on this cluster. Defaults to true only when env == platform_env (dev)."
+  type        = bool
+  default     = null
+  nullable    = true
+}
+
+variable "enable_vault" {
+  description = "Deploy Vault on this cluster. Defaults to true only when env == platform_env (dev)."
+  type        = bool
+  default     = null
+  nullable    = true
+}
+
+variable "enable_monitoring" {
+  description = "Deploy kube-prometheus-stack + Loki on this cluster. Defaults to true only when env == platform_env (dev)."
+  type        = bool
+  default     = null
+  nullable    = true
 }

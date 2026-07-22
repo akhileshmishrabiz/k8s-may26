@@ -1,10 +1,4 @@
-# Ecommerce workload namespace — one per cluster (same name "ecommerce" on dev and prod clusters).
-#
-# Apply per cluster:
-#   terraform apply -var-file=env/dev.tfvars   # dev EKS cluster
-#   terraform apply -var-file=env/prod.tfvars  # prod EKS cluster
-#
-# Isolation is by cluster, not namespace suffix.
+# Ecommerce workload namespace — prefixed with var.env (dev-ecommerce, prod-ecommerce).
 resource "kubernetes_namespace_v1" "ecommerce" {
   count = var.enable_cluster_resources ? 1 : 0
 

@@ -9,14 +9,14 @@
 # is belt-and-braces for if the selector is tightened later.
 
 resource "kubernetes_manifest" "podmonitor" {
-  for_each = var.services
+  for_each = local.deploy_observability ? var.services : {}
 
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
     kind       = "PodMonitor"
     metadata = {
-      name      = each.key
-      namespace = var.monitoring_namespace
+      name      = "${var.env}-${each.key}"
+      namespace = local.monitoring_namespace
       labels = {
         release                      = var.release_label
         "app.kubernetes.io/part-of"  = "ecommerce"
@@ -25,7 +25,7 @@ resource "kubernetes_manifest" "podmonitor" {
     }
     spec = {
       namespaceSelector = {
-        matchNames = [var.ecommerce_namespace]
+        matchNames = [local.ecommerce_namespace]
       }
       selector = {
         matchLabels = {
@@ -67,12 +67,14 @@ resource "kubernetes_manifest" "podmonitor" {
 # vts/stub_status, this monitor will simply produce `up{}=0` until the image
 # is updated — useful as a probe in either case.
 resource "kubernetes_manifest" "podmonitor_api_gateway" {
+  count = local.deploy_observability ? 1 : 0
+
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
     kind       = "PodMonitor"
     metadata = {
-      name      = "api-gateway"
-      namespace = var.monitoring_namespace
+      name      = "${var.env}-api-gateway"
+      namespace = local.monitoring_namespace
       labels = {
         release                      = var.release_label
         "app.kubernetes.io/part-of"  = "ecommerce"
@@ -81,7 +83,7 @@ resource "kubernetes_manifest" "podmonitor_api_gateway" {
     }
     spec = {
       namespaceSelector = {
-        matchNames = [var.ecommerce_namespace]
+        matchNames = [local.ecommerce_namespace]
       }
       selector = {
         matchLabels = {

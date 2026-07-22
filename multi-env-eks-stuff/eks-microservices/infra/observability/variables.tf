@@ -1,3 +1,32 @@
+variable "env" {
+  description = "Environment key — prefixed on all resource names (dev → dev-, prod → prod-)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "prod"], var.env)
+    error_message = "env must be dev or prod."
+  }
+}
+
+variable "platform_env" {
+  description = "Environment where monitoring stack is deployed (prod uses dev Grafana/Prometheus)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "prod"], var.platform_env)
+    error_message = "platform_env must be dev or prod."
+  }
+}
+
+variable "enable_observability" {
+  description = "Deploy PodMonitors, PrometheusRules, and Grafana dashboards. Defaults to true only when env == platform_env (dev)."
+  type        = bool
+  default     = null
+  nullable    = true
+}
+
 variable "cluster_name" {
   default = "eks-cluster"
 }

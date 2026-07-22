@@ -1,3 +1,14 @@
+variable "env" {
+  description = "Environment key — prefixed on all resource names (dev → dev-, prod → prod-)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "prod"], var.env)
+    error_message = "env must be dev or prod."
+  }
+}
+
 variable "eks_cluster_name" {
   description = "The name of the EKS cluster"
   type        = string

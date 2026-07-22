@@ -10,7 +10,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   set = [
     {
       name  = "clusterName"
-      value = var.eks_cluster_name
+      value = local.eks_cluster_name
     },
     {
       name  = "region"
@@ -43,7 +43,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 
 
 resource "aws_iam_role" "aws_load_balancer_controller" {
-  name = "aws-load-balancer-controller-${var.eks_cluster_name}"
+  name = "aws-load-balancer-controller-${local.eks_cluster_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -68,7 +68,7 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
 
 # IAM Policy for AWS Load Balancer Controller
 resource "aws_iam_policy" "aws_load_balancer_controller" {
-  name        = "${var.eks_cluster_name}-AWSLoadBalancerControllerIAMPolicy"
+  name        = "${local.eks_cluster_name}-AWSLoadBalancerControllerIAMPolicy"
   description = "IAM policy for AWS Load Balancer Controller"
 
   policy = jsonencode({

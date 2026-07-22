@@ -1,7 +1,7 @@
 # # Allow kubelets on Karpenter-launched EC2 instances to join the cluster.
 # # EKS 1.33 uses Access Entries (not aws-auth) — type EC2_LINUX maps the node role.
 resource "aws_eks_access_entry" "karpenter_node" {
-  cluster_name  = var.eks_cluster_name
+  cluster_name  = local.eks_cluster_name
   principal_arn = aws_iam_role.karpenter_node.arn
   type          = "EC2_LINUX"
 }
@@ -11,7 +11,7 @@ resource "aws_ec2_tag" "subnet_discovery" {
   for_each    = toset(data.aws_subnets.private.ids)
   resource_id = each.value
   key         = "karpenter.sh/discovery"
-  value       = var.eks_cluster_name
+  value       = local.eks_cluster_name
 }
 
 # # Tag the EKS-managed cluster primary security group so the EC2NodeClass
@@ -19,7 +19,7 @@ resource "aws_ec2_tag" "subnet_discovery" {
 resource "aws_ec2_tag" "cluster_sg_discovery" {
   resource_id = data.aws_eks_cluster.cluster.vpc_config[0].cluster_security_group_id
   key         = "karpenter.sh/discovery"
-  value       = var.eks_cluster_name
+  value       = local.eks_cluster_name
 }
 
 # # Tag the managed node group security group too. Without this, Karpenter nodes
@@ -27,14 +27,14 @@ resource "aws_ec2_tag" "cluster_sg_discovery" {
 resource "aws_ec2_tag" "node_sg_discovery" {
   resource_id = data.aws_security_group.node.id
   key         = "karpenter.sh/discovery"
-  value       = var.eks_cluster_name
+  value       = local.eks_cluster_name
 }
 
 
 # # sqs queue for karpenter
 
 resource "aws_sqs_queue" "karpenter" {
-  name                      = "karpenter-${var.eks_cluster_name}"
+  name                      = "karpenter-${local.eks_cluster_name}"
   message_retention_seconds = 300
   sqs_managed_sse_enabled   = true
 }
@@ -58,7 +58,7 @@ resource "aws_sqs_queue_policy" "karpenter" {
 # # ---- EventBridge rules → SQS interruption queue ----------------------------
 
 resource "aws_cloudwatch_event_rule" "spot_interruption" {
-  name        = "karpenter-${var.eks_cluster_name}-spot-interruption"
+  name        = "karpenter-${local.eks_cluster_name}-spot-interruption"
   description = "EC2 Spot Instance Interruption Warning"
   event_pattern = jsonencode({
     source        = ["aws.ec2"]
@@ -73,7 +73,7 @@ resource "aws_cloudwatch_event_target" "spot_interruption" {
 }
 
 resource "aws_cloudwatch_event_rule" "rebalance" {
-  name        = "karpenter-${var.eks_cluster_name}-rebalance"
+  name        = "karpenter-${local.eks_cluster_name}-rebalance"
   description = "EC2 Instance Rebalance Recommendation"
   event_pattern = jsonencode({
     source        = ["aws.ec2"]
@@ -88,7 +88,7 @@ resource "aws_cloudwatch_event_target" "rebalance" {
 }
 
 resource "aws_cloudwatch_event_rule" "scheduled_change" {
-  name        = "karpenter-${var.eks_cluster_name}-scheduled-change"
+  name        = "karpenter-${local.eks_cluster_name}-scheduled-change"
   description = "AWS Health Scheduled Change"
   event_pattern = jsonencode({
     source        = ["aws.health"]
@@ -103,7 +103,7 @@ resource "aws_cloudwatch_event_target" "scheduled_change" {
 }
 
 resource "aws_cloudwatch_event_rule" "instance_state_change" {
-  name        = "karpenter-${var.eks_cluster_name}-instance-state-change"
+  name        = "karpenter-${local.eks_cluster_name}-instance-state-change"
   description = "EC2 Instance State-change Notification"
   event_pattern = jsonencode({
     source        = ["aws.ec2"]
@@ -138,19 +138,19 @@ resource "kubectl_manifest" "ec2nodeclass_default" {
       subnetSelectorTerms = [
         {
           tags = {
-            "karpenter.sh/discovery" = var.eks_cluster_name
+            "karpenter.sh/discovery" = local.eks_cluster_name
           }
         },
       ]
       securityGroupSelectorTerms = [
         {
           tags = {
-            "karpenter.sh/discovery" = var.eks_cluster_name
+            "karpenter.sh/discovery" = local.eks_cluster_name
           }
         },
       ]
       tags = {
-        "karpenter.sh/discovery" = var.eks_cluster_name
+        "karpenter.sh/discovery" = local.eks_cluster_name
       }
     }
   })
@@ -244,7 +244,7 @@ resource "helm_release" "karpenter" {
   set = [
     {
       name  = "settings.clusterName"
-      value = var.eks_cluster_name
+      value = local.eks_cluster_name
     },
     {
       name  = "settings.interruptionQueue"

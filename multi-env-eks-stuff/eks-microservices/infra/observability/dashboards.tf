@@ -27,11 +27,11 @@ locals {
 }
 
 resource "kubernetes_config_map_v1" "dashboard" {
-  for_each = local.all_dashboards
+  for_each = local.deploy_observability ? local.all_dashboards : {}
 
   metadata {
-    name      = "ecommerce-${replace(each.key, ".", "-")}"
-    namespace = var.monitoring_namespace
+    name      = "${var.env}-ecommerce-${replace(each.key, ".", "-")}"
+    namespace = local.monitoring_namespace
     labels = {
       grafana_dashboard           = "1"
       "app.kubernetes.io/part-of" = "ecommerce"

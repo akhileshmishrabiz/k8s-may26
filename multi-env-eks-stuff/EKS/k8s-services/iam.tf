@@ -3,7 +3,7 @@
 # ============================================================================
 
 resource "aws_iam_role" "karpenter_controller" {
-  name = "karpenter-controller-${var.eks_cluster_name}"
+  name = "karpenter-controller-${local.eks_cluster_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -24,7 +24,7 @@ resource "aws_iam_role" "karpenter_controller" {
 }
 
 resource "aws_iam_policy" "karpenter_controller" {
-  name = "karpenter-controller-${var.eks_cluster_name}"
+  name = "karpenter-controller-${local.eks_cluster_name}"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -48,7 +48,7 @@ resource "aws_iam_policy" "karpenter_controller" {
         Action   = ["ec2:RunInstances", "ec2:CreateFleet"]
         Condition = {
           StringEquals = {
-            "aws:ResourceTag/kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
+            "aws:ResourceTag/kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
           }
           StringLike = {
             "aws:ResourceTag/karpenter.sh/nodepool" = "*"
@@ -69,8 +69,8 @@ resource "aws_iam_policy" "karpenter_controller" {
         Action = ["ec2:RunInstances", "ec2:CreateFleet", "ec2:CreateLaunchTemplate"]
         Condition = {
           StringEquals = {
-            "aws:RequestTag/kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
-            "aws:RequestTag/eks:eks-cluster-name"                      = var.eks_cluster_name
+            "aws:RequestTag/kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
+            "aws:RequestTag/eks:eks-cluster-name"                      = local.eks_cluster_name
           }
           StringLike = {
             "aws:RequestTag/karpenter.sh/nodepool" = "*"
@@ -91,8 +91,8 @@ resource "aws_iam_policy" "karpenter_controller" {
         Action = "ec2:CreateTags"
         Condition = {
           StringEquals = {
-            "aws:RequestTag/kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
-            "aws:RequestTag/eks:eks-cluster-name"                      = var.eks_cluster_name
+            "aws:RequestTag/kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
+            "aws:RequestTag/eks:eks-cluster-name"                      = local.eks_cluster_name
             "ec2:CreateAction"                                         = ["RunInstances", "CreateFleet", "CreateLaunchTemplate"]
           }
           StringLike = {
@@ -107,13 +107,13 @@ resource "aws_iam_policy" "karpenter_controller" {
         Action   = "ec2:CreateTags"
         Condition = {
           StringEquals = {
-            "aws:ResourceTag/kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
+            "aws:ResourceTag/kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
           }
           StringLike = {
             "aws:ResourceTag/karpenter.sh/nodepool" = "*"
           }
           StringEqualsIfExists = {
-            "aws:RequestTag/eks:eks-cluster-name" = var.eks_cluster_name
+            "aws:RequestTag/eks:eks-cluster-name" = local.eks_cluster_name
           }
           "ForAllValues:StringEquals" = {
             "aws:TagKeys" = [
@@ -134,7 +134,7 @@ resource "aws_iam_policy" "karpenter_controller" {
         Action = ["ec2:TerminateInstances", "ec2:DeleteLaunchTemplate"]
         Condition = {
           StringEquals = {
-            "aws:ResourceTag/kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
+            "aws:ResourceTag/kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
           }
           StringLike = {
             "aws:ResourceTag/karpenter.sh/nodepool" = "*"
@@ -202,8 +202,8 @@ resource "aws_iam_policy" "karpenter_controller" {
         Action   = ["iam:CreateInstanceProfile"]
         Condition = {
           StringEquals = {
-            "aws:RequestTag/kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
-            "aws:RequestTag/eks:eks-cluster-name"                      = var.eks_cluster_name
+            "aws:RequestTag/kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
+            "aws:RequestTag/eks:eks-cluster-name"                      = local.eks_cluster_name
             "aws:RequestTag/topology.kubernetes.io/region"             = var.region
           }
           StringLike = {
@@ -218,10 +218,10 @@ resource "aws_iam_policy" "karpenter_controller" {
         Action   = ["iam:TagInstanceProfile"]
         Condition = {
           StringEquals = {
-            "aws:ResourceTag/kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
+            "aws:ResourceTag/kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
             "aws:ResourceTag/topology.kubernetes.io/region"             = var.region
-            "aws:RequestTag/kubernetes.io/cluster/${var.eks_cluster_name}"  = "owned"
-            "aws:RequestTag/eks:eks-cluster-name"                       = var.eks_cluster_name
+            "aws:RequestTag/kubernetes.io/cluster/${local.eks_cluster_name}"  = "owned"
+            "aws:RequestTag/eks:eks-cluster-name"                       = local.eks_cluster_name
             "aws:RequestTag/topology.kubernetes.io/region"              = var.region
           }
           StringLike = {
@@ -241,7 +241,7 @@ resource "aws_iam_policy" "karpenter_controller" {
         ]
         Condition = {
           StringEquals = {
-            "aws:ResourceTag/kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
+            "aws:ResourceTag/kubernetes.io/cluster/${local.eks_cluster_name}" = "owned"
             "aws:ResourceTag/topology.kubernetes.io/region"             = var.region
           }
           StringLike = {
@@ -258,7 +258,7 @@ resource "aws_iam_policy" "karpenter_controller" {
       {
         Sid      = "AllowAPIServerEndpointDiscovery"
         Effect   = "Allow"
-        Resource = "arn:${data.aws_partition.current.partition}:eks:${var.region}:${data.aws_caller_identity.current.account_id}:cluster/${var.eks_cluster_name}"
+        Resource = "arn:${data.aws_partition.current.partition}:eks:${var.region}:${data.aws_caller_identity.current.account_id}:cluster/${local.eks_cluster_name}"
         Action   = "eks:DescribeCluster"
       },
     ]
@@ -275,7 +275,7 @@ resource "aws_iam_role_policy_attachment" "karpenter_controller" {
 # ============================================================================
 
 resource "aws_iam_role" "karpenter_node" {
-  name = "karpenter-node-${var.eks_cluster_name}"
+  name = "karpenter-node-${local.eks_cluster_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

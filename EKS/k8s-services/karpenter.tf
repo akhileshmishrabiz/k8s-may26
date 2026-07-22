@@ -219,7 +219,7 @@ resource "kubectl_manifest" "nodepool_default" {
         }
       }
       limits = {
-        cpu = 5
+        cpu = 0
       }
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"

@@ -41,7 +41,7 @@ locals {
 
 resource "kubernetes_namespace_v1" "external_secrets" {
   metadata {
-    name = var.external_secrets_namespace
+    name = local.external_secrets_namespace
   }
 }
 
@@ -50,7 +50,7 @@ data "kubernetes_namespace_v1" "ecommerce" {
   count = var.enable_eso_secrets ? 1 : 0
 
   metadata {
-    name = var.namespace
+    name = local.cluster_namespace
   }
 }
 
@@ -58,8 +58,8 @@ resource "kubernetes_secret_v1" "vault_token" {
   count = var.enable_eso_secrets ? 1 : 0
 
   metadata {
-    name      = "vault-token"
-    namespace = var.external_secrets_namespace
+    name      = "${var.env}-vault-token"
+    namespace = local.external_secrets_namespace
   }
 
   data = {
@@ -76,19 +76,19 @@ resource "kubernetes_manifest" "cluster_secret_store" {
     apiVersion = "external-secrets.io/v1"
     kind       = "ClusterSecretStore"
     metadata = {
-      name = "vault-backend"
+      name = "${var.env}-vault-backend"
     }
     spec = {
       provider = {
         vault = {
-          server  = var.vault_in_cluster_addr
+          server  = local.vault_in_cluster_addr
           path    = "secret"
           version = "v2"
           auth = {
             tokenSecretRef = {
-              name      = "vault-token"
+              name      = "${var.env}-vault-token"
               key       = "token"
-              namespace = var.external_secrets_namespace
+              namespace = local.external_secrets_namespace
             }
           }
         }
@@ -112,7 +112,7 @@ resource "kubernetes_manifest" "external_secret" {
     spec = {
       refreshInterval = "1h"
       secretStoreRef = {
-        name = "vault-backend"
+        name = "${var.env}-vault-backend"
         kind = "ClusterSecretStore"
       }
       target = {

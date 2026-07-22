@@ -1,6 +1,6 @@
 resource "kubernetes_namespace_v1" "cnpg" {
   metadata {
-    name = var.cnpg_namespace
+    name = local.cnpg_namespace
     labels = {
       "app.kubernetes.io/name" = "cloudnative-pg"
     }

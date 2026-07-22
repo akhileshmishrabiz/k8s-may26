@@ -1,23 +1,26 @@
-# ============================================================================
-# Monitoring Stack - Prometheus & Grafana
-# ============================================================================
+# Monitoring stack — deployed on dev only (see locals.deploy_monitoring).
+# Prod uses dev Grafana/Prometheus URLs (grafana.*, prometheus.* on shared ALB).
 
 resource "kubernetes_namespace_v1" "monitoring" {
+  count = local.deploy_monitoring ? 1 : 0
+
   metadata {
-    name = "monitoring"
+    name = local.monitoring_namespace
 
     labels = {
-      name       = "monitoring"
+      name       = local.monitoring_namespace
       managed-by = "terraform"
     }
   }
 }
 
 resource "helm_release" "kube_prometheus_grafana_stack" {
+  count = local.deploy_monitoring ? 1 : 0
+
   name       = "kube-prometheus-stack"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "kube-prometheus-stack"
-  namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
+  namespace  = kubernetes_namespace_v1.monitoring[0].metadata[0].name
   version    = "70.0.0"
   timeout    = 600
 
@@ -35,8 +38,8 @@ resource "helm_release" "kube_prometheus_grafana_stack" {
               memory = "2Gi"
             }
           }
-          retention         = "15d"
-          retentionSize     = "10GB"
+          retention                     = "15d"
+          retentionSize                 = "10GB"
           serviceMonitorSelector          = {}
           serviceMonitorNamespaceSelector = {}
           podMonitorSelector              = {}
@@ -103,7 +106,7 @@ resource "helm_release" "kube_prometheus_grafana_stack" {
             name      = "Loki"
             type      = "loki"
             access    = "proxy"
-            url       = "http://loki.monitoring.svc.cluster.local:3100"
+            url       = "http://loki.${local.monitoring_namespace}.svc.cluster.local:3100"
             isDefault = false
             editable  = true
           }
@@ -183,10 +186,12 @@ resource "helm_release" "kube_prometheus_grafana_stack" {
 }
 
 resource "helm_release" "loki" {
+  count = local.deploy_monitoring ? 1 : 0
+
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "loki-stack"
-  namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
+  namespace  = kubernetes_namespace_v1.monitoring[0].metadata[0].name
   version    = "2.10.2"
   timeout    = 600
 
@@ -270,20 +275,22 @@ resource "helm_release" "loki" {
 }
 
 resource "kubernetes_ingress_v1" "grafana_ingress" {
+  count = local.deploy_monitoring ? 1 : 0
+
   metadata {
-    name      = "grafana-ingress"
-    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+    name      = "${var.env}-grafana-ingress"
+    namespace = kubernetes_namespace_v1.monitoring[0].metadata[0].name
     annotations = {
       "alb.ingress.kubernetes.io/scheme"                   = "internet-facing"
       "alb.ingress.kubernetes.io/target-type"              = "ip"
       "alb.ingress.kubernetes.io/listen-ports"             = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
       "alb.ingress.kubernetes.io/ssl-redirect"             = "443"
-      "alb.ingress.kubernetes.io/certificate-arn"          = aws_acm_certificate.microservices_cert.arn
+      "alb.ingress.kubernetes.io/certificate-arn"          = local.acm_cert_arn
       "alb.ingress.kubernetes.io/healthcheck-path"         = "/api/health"
       "alb.ingress.kubernetes.io/healthcheck-protocol"     = "HTTP"
       "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
       "alb.ingress.kubernetes.io/tags"                     = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
-      "alb.ingress.kubernetes.io/group.name"               = var.alb_group_name
+      "alb.ingress.kubernetes.io/group.name"               = local.alb_group_name
     }
   }
 
@@ -315,27 +322,29 @@ resource "kubernetes_ingress_v1" "grafana_ingress" {
   }
 
   depends_on = [
-    helm_release.kube_prometheus_grafana_stack,
-    aws_acm_certificate_validation.app,
+    helm_release.kube_prometheus_grafana_stack[0],
     helm_release.aws_load_balancer_controller,
+    aws_acm_certificate_validation.app[0],
   ]
 }
 
 resource "kubernetes_ingress_v1" "prometheus_ingress" {
+  count = local.deploy_monitoring ? 1 : 0
+
   metadata {
-    name      = "prometheus-ingress"
-    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+    name      = "${var.env}-prometheus-ingress"
+    namespace = kubernetes_namespace_v1.monitoring[0].metadata[0].name
     annotations = {
       "alb.ingress.kubernetes.io/scheme"                   = "internet-facing"
       "alb.ingress.kubernetes.io/target-type"              = "ip"
       "alb.ingress.kubernetes.io/listen-ports"             = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
       "alb.ingress.kubernetes.io/ssl-redirect"             = "443"
-      "alb.ingress.kubernetes.io/certificate-arn"          = aws_acm_certificate.microservices_cert.arn
+      "alb.ingress.kubernetes.io/certificate-arn"          = local.acm_cert_arn
       "alb.ingress.kubernetes.io/healthcheck-path"         = "/-/healthy"
       "alb.ingress.kubernetes.io/healthcheck-protocol"     = "HTTP"
       "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
       "alb.ingress.kubernetes.io/tags"                     = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
-      "alb.ingress.kubernetes.io/group.name"               = var.alb_group_name
+      "alb.ingress.kubernetes.io/group.name"               = local.alb_group_name
     }
   }
 
@@ -367,39 +376,45 @@ resource "kubernetes_ingress_v1" "prometheus_ingress" {
   }
 
   depends_on = [
-    helm_release.kube_prometheus_grafana_stack,
-    aws_acm_certificate_validation.app,
+    helm_release.kube_prometheus_grafana_stack[0],
     helm_release.aws_load_balancer_controller,
+    aws_acm_certificate_validation.app[0],
   ]
 }
 
 resource "time_sleep" "wait_for_monitoring_ingress" {
+  count = local.deploy_monitoring ? 1 : 0
+
   depends_on = [
-    kubernetes_ingress_v1.grafana_ingress,
-    kubernetes_ingress_v1.prometheus_ingress,
+    kubernetes_ingress_v1.grafana_ingress[0],
+    kubernetes_ingress_v1.prometheus_ingress[0],
   ]
 
   create_duration = "120s"
 }
 
 data "kubernetes_ingress_v1" "grafana" {
+  count = local.deploy_monitoring ? 1 : 0
+
   metadata {
-    name      = kubernetes_ingress_v1.grafana_ingress.metadata[0].name
-    namespace = kubernetes_ingress_v1.grafana_ingress.metadata[0].namespace
+    name      = kubernetes_ingress_v1.grafana_ingress[0].metadata[0].name
+    namespace = kubernetes_ingress_v1.grafana_ingress[0].metadata[0].namespace
   }
 
   depends_on = [time_sleep.wait_for_monitoring_ingress]
 }
 
 resource "aws_route53_record" "grafana" {
+  count = local.deploy_monitoring ? 1 : 0
+
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "grafana.${var.app_subdomain}.${var.domain_name}"
   type    = "A"
 
   alias {
-    name                   = coalesce(
-      try(data.kubernetes_ingress_v1.grafana.status[0].load_balancer[0].ingress[0].hostname, ""),
-      kubernetes_ingress_v1.argocd_ingress_tls.status[0].load_balancer[0].ingress[0].hostname
+    name = coalesce(
+      try(data.kubernetes_ingress_v1.grafana[0].status[0].load_balancer[0].ingress[0].hostname, ""),
+      local.deploy_argocd ? kubernetes_ingress_v1.argocd_ingress_tls[0].status[0].load_balancer[0].ingress[0].hostname : ""
     )
     zone_id                = var.aws_alb_zoneid
     evaluate_target_health = true
@@ -409,14 +424,16 @@ resource "aws_route53_record" "grafana" {
 }
 
 resource "aws_route53_record" "prometheus" {
+  count = local.deploy_monitoring ? 1 : 0
+
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "prometheus.${var.app_subdomain}.${var.domain_name}"
   type    = "A"
 
   alias {
-    name                   = coalesce(
-      try(data.kubernetes_ingress_v1.grafana.status[0].load_balancer[0].ingress[0].hostname, ""),
-      kubernetes_ingress_v1.argocd_ingress_tls.status[0].load_balancer[0].ingress[0].hostname
+    name = coalesce(
+      try(data.kubernetes_ingress_v1.grafana[0].status[0].load_balancer[0].ingress[0].hostname, ""),
+      local.deploy_argocd ? kubernetes_ingress_v1.argocd_ingress_tls[0].status[0].load_balancer[0].ingress[0].hostname : ""
     )
     zone_id                = var.aws_alb_zoneid
     evaluate_target_health = true

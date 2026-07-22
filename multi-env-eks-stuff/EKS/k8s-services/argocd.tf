@@ -1,75 +1,62 @@
-# helm resource for argocd
-
+# ArgoCD — deployed on dev only (see locals.deploy_argocd). Prod connects to dev ArgoCD.
 
 resource "kubernetes_namespace_v1" "argocd" {
+  count = local.deploy_argocd ? 1 : 0
+
   metadata {
-    name = "argocd"
+    name = local.argocd_namespace
   }
 }
 
 resource "helm_release" "argocd" {
+  count = local.deploy_argocd ? 1 : 0
+
   name       = "argocd"
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-cd"
   version    = "7.7.16"
-  namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
+  namespace  = kubernetes_namespace_v1.argocd[0].metadata[0].name
 
-  # Use ClusterIP since ALB will handle external traffic
-  set  = [
-   {
-    name  = "server.service.type"
-    value = "ClusterIP"
-  },
-  # Run insecure mode since ALB terminates SSL
-   {
-    name  = "configs.params.server\\.insecure"
-    value = "true"
-  }
+  set = [
+    {
+      name  = "server.service.type"
+      value = "ClusterIP"
+    },
+    {
+      name  = "configs.params.server\\.insecure"
+      value = "true"
+    }
   ]
 }
 
-
-
-# argocd ingrass -> acess argocd on a subdomain -> argocd.devopsdozo.livingdevops.org
-
 resource "kubernetes_ingress_v1" "argocd_ingress_tls" {
+  count = local.deploy_argocd ? 1 : 0
+
   metadata {
-    name      = "argocd-ingress"
-    namespace = "argocd"
+    name      = "${var.env}-argocd-ingress"
+    namespace = local.argocd_namespace
     annotations = {
-      # ALB configuration
-      "alb.ingress.kubernetes.io/scheme"      = "internet-facing"
-      "alb.ingress.kubernetes.io/target-type" = "ip"
-
-      # SSL/TLS configuration
-      "alb.ingress.kubernetes.io/listen-ports"        = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
-      "alb.ingress.kubernetes.io/ssl-redirect"        = "443"
-      "alb.ingress.kubernetes.io/certificate-arn"     = aws_acm_certificate.microservices_cert.arn
-
-      # Health check configuration
-      "alb.ingress.kubernetes.io/healthcheck-path"     = "/"
-      "alb.ingress.kubernetes.io/healthcheck-protocol" = "HTTP"
-
-      # Load balancer attributes
+      "alb.ingress.kubernetes.io/scheme"                   = "internet-facing"
+      "alb.ingress.kubernetes.io/target-type"              = "ip"
+      "alb.ingress.kubernetes.io/listen-ports"             = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+      "alb.ingress.kubernetes.io/ssl-redirect"             = "443"
+      "alb.ingress.kubernetes.io/certificate-arn"          = local.acm_cert_arn
+      "alb.ingress.kubernetes.io/healthcheck-path"         = "/"
+      "alb.ingress.kubernetes.io/healthcheck-protocol"     = "HTTP"
       "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
-
-      # Tags for the ALB
-      "alb.ingress.kubernetes.io/tags" = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
-
-      # ALB group annotation
-      "alb.ingress.kubernetes.io/group.name" = var.alb_group_name
+      "alb.ingress.kubernetes.io/tags"                     = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
+      "alb.ingress.kubernetes.io/group.name"               = local.alb_group_name
     }
   }
 
   depends_on = [
-    kubernetes_namespace_v1.argocd,
-    aws_acm_certificate_validation.app,
-    helm_release.argocd
+    kubernetes_namespace_v1.argocd[0],
+    helm_release.argocd[0],
+    aws_acm_certificate_validation.app[0],
   ]
 
   spec {
     ingress_class_name = "alb"
-
 
     tls {
       hosts = [
@@ -81,7 +68,6 @@ resource "kubernetes_ingress_v1" "argocd_ingress_tls" {
       host = "argocd.${var.app_subdomain}.${var.domain_name}"
 
       http {
-        # Route for backend API
         path {
           path      = "/"
           path_type = "Prefix"
@@ -93,79 +79,24 @@ resource "kubernetes_ingress_v1" "argocd_ingress_tls" {
               }
             }
           }
-        } 
         }
       }
     }
   }
-
-
-# acm and route 53 record for argocd.devopsdozo.livingdevops.org
-
-# pull the public hosted zone id from route 53
-data "aws_route53_zone" "main" {
-  name         = var.domain_name
-  private_zone = false
 }
 
-# Create the certificate
-# use with 3-tier app only
-# resource "aws_acm_certificate" "argocd_cert" {
-#   domain_name       = "argocd.${var.app_subdomain}.${var.domain_name}"
-#   validation_method = "DNS"
-
-#   tags = {
-#     Name = "argocd-cert"
-#   }
-# }
-# *.devopsdozo.livingdevops.org, argocd.devopsdozo.livingdevops.org, grafana.devopsdozo.livingdevops.org, prometheus.devopsdozo.livingdevops.org, alertmanager.devopsdozo.livingdevops.org
-## use it in microservices app only
-resource "aws_acm_certificate" "microservices_cert" {
-  domain_name       = "*.${var.app_subdomain}.${var.domain_name}"
-  validation_method = "DNS"
-
-  tags = {
-    Name = "microservices-cert"
-  }
-}
-
-
-
-# Create Route53 record for ACM certificate validation
-resource "aws_route53_record" "cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.microservices_cert.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
-    }
-  }
-
-  allow_overwrite = true
-  name            = each.value.name
-  records         = [each.value.record]
-  ttl             = 60
-  type            = each.value.type
-  zone_id         = data.aws_route53_zone.main.zone_id
-}
-
-# Validate the ACM certificate
-resource "aws_acm_certificate_validation" "app" {
-  certificate_arn         = aws_acm_certificate.microservices_cert.arn
-  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
-}
-
-# Create Route53 alias record to point subdomain to ALB
 resource "aws_route53_record" "argocd" {
+  count = local.deploy_argocd ? 1 : 0
+
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "argocd.${var.app_subdomain}.${var.domain_name}"
   type    = "A"
 
   alias {
-    name                   = kubernetes_ingress_v1.argocd_ingress_tls.status[0].load_balancer[0].ingress[0].hostname
-    zone_id                = "ZP97RAFLXTNZK"
+    name                   = kubernetes_ingress_v1.argocd_ingress_tls[0].status[0].load_balancer[0].ingress[0].hostname
+    zone_id                = var.aws_alb_zoneid
     evaluate_target_health = true
   }
 
-    depends_on = [kubernetes_ingress_v1.argocd_ingress_tls]
+  depends_on = [kubernetes_ingress_v1.argocd_ingress_tls]
 }

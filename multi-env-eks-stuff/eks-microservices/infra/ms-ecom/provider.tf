@@ -8,6 +8,12 @@ provider "aws" {
   }
 }
 
+provider "vault" {
+  address          = local.vault_addr_effective
+  token            = var.vault_token
+  skip_child_token = true
+}
+
 provider "kubernetes" {
   host                   = data.aws_eks_cluster.cluster.endpoint
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
@@ -15,9 +21,9 @@ provider "kubernetes" {
 }
 
 data "aws_eks_cluster" "cluster" {
-  name = var.cluster_name
+  name = local.cluster_name
 }
 
 data "aws_eks_cluster_auth" "cluster" {
-  name = var.cluster_name
+  name = local.cluster_name
 }

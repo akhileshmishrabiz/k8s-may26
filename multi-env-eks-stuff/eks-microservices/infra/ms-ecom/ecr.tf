@@ -1,14 +1,16 @@
 locals {
   ecr_repos = [
-    "ecommerce-product-service",
-    "ecommerce-user-service",
-    "ecommerce-cart-service",
-    "ecommerce-order-service",
-    "ecommerce-payment-service",
-    "ecommerce-notification-service",
-    "ecommerce-api-gateway",
-    "ecommerce-frontend",
-    "ecommerce-seed",
+    for repo in [
+      "ecommerce-product-service",
+      "ecommerce-user-service",
+      "ecommerce-cart-service",
+      "ecommerce-order-service",
+      "ecommerce-payment-service",
+      "ecommerce-notification-service",
+      "ecommerce-api-gateway",
+      "ecommerce-frontend",
+      "ecommerce-seed",
+    ] : "${local.env_prefix}${repo}"
   ]
 }
 

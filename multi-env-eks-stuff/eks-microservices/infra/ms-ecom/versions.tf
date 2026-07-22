@@ -5,19 +5,23 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    vault = {
+      source  = "hashicorp/vault"
+      version = "~> 4.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = "~> 3.0"
-    }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.12"
     }
   }
 
   backend "s3" {
     bucket       = "state-bucket-879381241087"
-    key          = "mayeks26/eks-microservice-implementation/ms-ecom/terraform.tfstate"
+    key          = "mayk8s/eks-microservice-implementation/vault-secrets/terraform.tfstate"
     region       = "ap-south-1"
     encrypt      = true
     use_lockfile = true

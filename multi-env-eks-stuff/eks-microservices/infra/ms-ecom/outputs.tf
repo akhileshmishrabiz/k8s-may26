@@ -9,7 +9,7 @@ output "namespace" {
 }
 
 output "namespaces" {
-  description = "Ecommerce workload namespace (same name on every cluster; keyed by env for compatibility)"
+  description = "Ecommerce workload namespace on this cluster (env-prefixed, e.g. dev-ecommerce)"
   value = {
     (var.env) = local.cluster_namespace
   }
@@ -49,7 +49,7 @@ output "ingress_names" {
 
 output "alb_group_name" {
   description = "Shared ALB ingress group name"
-  value       = var.alb_group_name
+  value       = local.alb_group_name
 }
 
 output "acm_cert_arn" {
@@ -67,7 +67,7 @@ output "argocd_app_names" {
 
 output "argocd_app_namespace" {
   description = "Namespace where ArgoCD Application resources live"
-  value       = var.enable_argocd_app ? var.argocd_namespace : null
+  value       = local.deploy_argocd_app ? local.argocd_app_namespace : null
 }
 
 output "argocd_target_revisions" {
@@ -105,4 +105,18 @@ output "data_store_services" {
       var.enable_databases && var.rabbitmq_enabled ? ["rabbitmq"] : [],
     )
   }
+}
+
+
+
+output "vault_paths" {
+  description = "KV v2 paths terraform writes to for this cluster apply"
+  value = [
+    "secret/ecommerce/${var.env}/database",
+    "secret/ecommerce/${var.env}/redis",
+    "secret/ecommerce/${var.env}/rabbitmq",
+    "secret/ecommerce/${var.env}/app",
+    "secret/ecommerce/${var.env}/razorpay",
+    "secret/ecommerce/${var.env}/aws",
+  ]
 }

@@ -1,6 +1,6 @@
 resource "kubernetes_namespace_v1" "eso" {
   metadata {
-    name = "eso"
+    name = local.eso_namespace
   }
 }
 

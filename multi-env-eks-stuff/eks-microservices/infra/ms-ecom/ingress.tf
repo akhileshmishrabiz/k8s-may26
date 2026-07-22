@@ -51,7 +51,7 @@ resource "kubernetes_ingress_v1" "service" {
       "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
       "alb.ingress.kubernetes.io/ssl-policy"               = "ELBSecurityPolicy-TLS-1-2-2017-01"
       "alb.ingress.kubernetes.io/tags"                     = "Environment=${each.value.environment_label},ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
-      "alb.ingress.kubernetes.io/group.name"                 = var.alb_group_name
+      "alb.ingress.kubernetes.io/group.name"                 = local.alb_group_name
     }
   }
 

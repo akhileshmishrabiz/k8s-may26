@@ -5,12 +5,14 @@
 # workloads scraped by the same Prometheus.
 
 resource "kubernetes_manifest" "prometheusrule_ecommerce" {
+  count = local.deploy_observability ? 1 : 0
+
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
     kind       = "PrometheusRule"
     metadata = {
-      name      = "ecommerce-app-rules"
-      namespace = var.monitoring_namespace
+      name      = "${var.env}-ecommerce-app-rules"
+      namespace = local.monitoring_namespace
       labels = {
         release                     = var.release_label
         "app.kubernetes.io/part-of" = "ecommerce"
@@ -24,15 +26,15 @@ resource "kubernetes_manifest" "prometheusrule_ecommerce" {
           rules = [
             {
               record = "ecommerce:http_request_rate:5m"
-              expr   = "sum by (service) (rate(http_requests_total{namespace=\"${var.ecommerce_namespace}\"}[5m]))"
+              expr   = "sum by (service) (rate(http_requests_total{namespace=\"${local.ecommerce_namespace}\"}[5m]))"
             },
             {
               record = "ecommerce:http_error_rate:5m"
-              expr   = "(sum by (service) (rate(http_requests_total{namespace=\"${var.ecommerce_namespace}\",status=~\"5..\"}[5m])) or sum by (service) (rate(http_requests_total{namespace=\"${var.ecommerce_namespace}\",status_code=~\"5..\"}[5m]))) / sum by (service) (rate(http_requests_total{namespace=\"${var.ecommerce_namespace}\"}[5m]))"
+              expr   = "(sum by (service) (rate(http_requests_total{namespace=\"${local.ecommerce_namespace}\",status=~\"5..\"}[5m])) or sum by (service) (rate(http_requests_total{namespace=\"${local.ecommerce_namespace}\",status_code=~\"5..\"}[5m]))) / sum by (service) (rate(http_requests_total{namespace=\"${local.ecommerce_namespace}\"}[5m]))"
             },
             {
               record = "ecommerce:http_latency_p95:5m"
-              expr   = "histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket{namespace=\"${var.ecommerce_namespace}\"}[5m])))"
+              expr   = "histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket{namespace=\"${local.ecommerce_namespace}\"}[5m])))"
             },
           ]
         },
@@ -42,7 +44,7 @@ resource "kubernetes_manifest" "prometheusrule_ecommerce" {
           rules = [
             {
               alert = "EcommerceServiceDown"
-              expr  = "up{namespace=\"${var.ecommerce_namespace}\"} == 0"
+              expr  = "up{namespace=\"${local.ecommerce_namespace}\"} == 0"
               for   = "2m"
               labels = {
                 severity = "critical"
@@ -81,7 +83,7 @@ resource "kubernetes_manifest" "prometheusrule_ecommerce" {
             },
             {
               alert = "EcommercePodCrashLooping"
-              expr  = "increase(kube_pod_container_status_restarts_total{namespace=\"${var.ecommerce_namespace}\"}[15m]) > 3"
+              expr  = "increase(kube_pod_container_status_restarts_total{namespace=\"${local.ecommerce_namespace}\"}[15m]) > 3"
               for   = "5m"
               labels = {
                 severity = "warning"
@@ -100,7 +102,7 @@ resource "kubernetes_manifest" "prometheusrule_ecommerce" {
           rules = [
             {
               alert = "EcommerceHighPaymentFailureRate"
-              expr  = "sum(rate(payments_processed_total{status=\"failed\",namespace=\"${var.ecommerce_namespace}\"}[5m])) / sum(rate(payments_processed_total{namespace=\"${var.ecommerce_namespace}\"}[5m])) > 0.1"
+              expr  = "sum(rate(payments_processed_total{status=\"failed\",namespace=\"${local.ecommerce_namespace}\"}[5m])) / sum(rate(payments_processed_total{namespace=\"${local.ecommerce_namespace}\"}[5m])) > 0.1"
               for   = "5m"
               labels = {
                 severity = "warning"
@@ -113,7 +115,7 @@ resource "kubernetes_manifest" "prometheusrule_ecommerce" {
             },
             {
               alert = "EcommerceNoPaymentsProcessed"
-              expr  = "sum(rate(payments_processed_total{namespace=\"${var.ecommerce_namespace}\"}[10m])) == 0"
+              expr  = "sum(rate(payments_processed_total{namespace=\"${local.ecommerce_namespace}\"}[10m])) == 0"
               for   = "15m"
               labels = {
                 severity = "info"
@@ -132,7 +134,7 @@ resource "kubernetes_manifest" "prometheusrule_ecommerce" {
           rules = [
             {
               alert = "EcommerceRabbitMQDown"
-              expr  = "kube_pod_status_ready{namespace=\"${var.ecommerce_namespace}\",pod=~\"rabbitmq-.*\",condition=\"true\"} == 0"
+              expr  = "kube_pod_status_ready{namespace=\"${local.ecommerce_namespace}\",pod=~\"rabbitmq-.*\",condition=\"true\"} == 0"
               for   = "2m"
               labels = {
                 severity = "critical"
@@ -145,7 +147,7 @@ resource "kubernetes_manifest" "prometheusrule_ecommerce" {
             },
             {
               alert = "EcommerceRedisDown"
-              expr  = "kube_pod_status_ready{namespace=\"${var.ecommerce_namespace}\",pod=~\"redis-.*\",condition=\"true\"} == 0"
+              expr  = "kube_pod_status_ready{namespace=\"${local.ecommerce_namespace}\",pod=~\"redis-.*\",condition=\"true\"} == 0"
               for   = "2m"
               labels = {
                 severity = "critical"
@@ -158,7 +160,7 @@ resource "kubernetes_manifest" "prometheusrule_ecommerce" {
             },
             {
               alert = "EcommerceCNPGClusterUnhealthy"
-              expr  = "cnpg_pg_replication_streaming_replicas{namespace=\"${var.ecommerce_namespace}\"} < 0"
+              expr  = "cnpg_pg_replication_streaming_replicas{namespace=\"${local.ecommerce_namespace}\"} < 0"
               for   = "5m"
               labels = {
                 severity = "warning"

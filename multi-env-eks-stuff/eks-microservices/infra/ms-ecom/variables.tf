@@ -25,6 +25,17 @@ variable "env" {
   }
 }
 
+variable "platform_env" {
+  description = "Environment where ArgoCD is deployed (prod connects to dev ArgoCD)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "prod"], var.platform_env)
+    error_message = "platform_env must be dev or prod."
+  }
+}
+
 # When false, skip namespace/databases/ingress/route53 (e.g. ArgoCD-only apply on mgmt cluster).
 variable "enable_cluster_resources" {
   description = "Provision namespace, data stores, ingress, and DNS on the cluster in var.cluster_name"
@@ -35,7 +46,7 @@ variable "enable_cluster_resources" {
 variable "environments" {
   description = <<-EOT
     Per-environment ArgoCD, ingress, and git branch configuration.
-    namespace is the same on every cluster (ecommerce); isolation is by cluster, not namespace suffix.
+    namespace is the base name (ecommerce); Terraform prefixes it with var.env (dev-ecommerce, prod-ecommerce).
     destination_server is the ArgoCD sync target (registered cluster name or API URL).
     Cluster-scoped resources (namespace.tf, databases.tf, ingress.tf) use only environments[var.env].
   EOT
@@ -214,9 +225,10 @@ variable "acm_cert_arn" {
 }
 
 variable "enable_argocd_app" {
-  description = "Create ArgoCD Applications that deploy the ecommerce Helm chart per environment"
+  description = "Create ArgoCD Applications on the platform (dev) cluster. Defaults to true only when env == platform_env."
   type        = bool
-  default     = true
+  default     = null
+  nullable    = true
 }
 
 variable "argocd_namespace" {
@@ -389,4 +401,70 @@ variable "rabbitmq_resources" {
     requests = { cpu = "100m", memory = "256Mi" }
     limits   = { cpu = "500m", memory = "512Mi" }
   }
+}
+
+# ---------------------------------------------------------------------------
+# Vault secrets + External Secrets Operator (vault.tf, eso.tf)
+# ---------------------------------------------------------------------------
+
+# Vault URL terraform talks to. Defaults to dev Vault ALB (prod writes secrets to dev Vault).
+variable "vault_addr" {
+  description = "Vault server address terraform writes secrets to"
+  default     = null
+}
+
+variable "vault_token" {
+  description = "Vault auth token. Default is the dev-mode root token from eks/k8s-services/vault-eso/."
+  default     = "root"
+  sensitive   = true
+}
+
+# Address ESO uses to reach Vault from inside the cluster.
+variable "vault_in_cluster_addr" {
+  description = "Vault address as seen from inside the cluster (used by the ClusterSecretStore). Defaults to vault service in the env-prefixed vault namespace."
+  default     = null
+}
+
+variable "enable_eso_secrets" {
+  description = "When true, also create the ClusterSecretStore + ExternalSecrets that bind ESO to Vault and materialise K8s secrets in each ecommerce namespace."
+  type        = bool
+  default     = true
+}
+
+variable "external_secrets_namespace" {
+  default = "external-secrets"
+}
+
+variable "db_user" {
+  default = "ecommerce_user"
+}
+
+variable "rabbitmq_user" {
+  default = "rabbitmq"
+}
+
+# External-service credentials. Override via tfvars / -var when wiring real values.
+variable "razorpay_key_id" {
+  default   = "rzp_test_placeholder"
+  sensitive = true
+}
+
+variable "razorpay_key_secret" {
+  default   = "placeholder_secret_key"
+  sensitive = true
+}
+
+variable "razorpay_webhook_secret" {
+  default   = "whsec_placeholder"
+  sensitive = true
+}
+
+variable "aws_access_key_id" {
+  default   = "DSSffghffg"
+  sensitive = true
+}
+
+variable "aws_secret_access_key" {
+  default   = "wJalrasaasnFEMI/fggh/bPxRfiCYEXAMPLEKEY"
+  sensitive = true
 }
