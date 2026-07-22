@@ -1,3 +1,18 @@
+# deploy to different env
+
+#Dev env
+```bash
+terraform init -backend-config=vars/dev.tfbackend
+terraform apply -var-file=vars/dev.tfvars
+``
+
+
+#prod env
+```bash
+terraform init -backend-config=vars/prod.tfbackend
+terraform apply -var-file=vars/prod.tfvars
+``
+
 # EKS k8s-services
 
 Terraform module that deploys cluster add-ons and workloads on top of the EKS cluster provisioned in `EKS/core-cluster/`. This document focuses on the **Karpenter** autoscaling setup defined in this module.
