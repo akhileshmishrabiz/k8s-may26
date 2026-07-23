@@ -12,6 +12,12 @@ destroy() {
   echo "=== destroy: $dir (env=$env) ==="
   cd "$ROOT/$dir"
   terraform init -backend-config="vars/${env}.tfbackend" -reconfigure -input=false
+  local managed
+  managed="$(terraform state list 2>/dev/null | rg -v '^data\.' || true)"
+  if [ -z "$managed" ]; then
+    echo "No managed resources in state — skipping."
+    return 0
+  fi
   terraform destroy -var-file="vars/${env}.tfvars" -auto-approve
 }
 
