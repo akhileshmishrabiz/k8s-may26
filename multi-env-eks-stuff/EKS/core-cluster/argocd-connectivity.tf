@@ -14,15 +14,11 @@ locals {
   platform_env_prefix = "${var.platform_env}-"
   platform_cluster    = "${local.platform_env_prefix}${var.eks_cluster_name}"
 
-  argocd_api_ingress_sgs = var.env == "prod" ? distinct(concat(
-    [data.aws_eks_cluster.this[0].vpc_config[0].cluster_security_group_id],
-    tolist(data.aws_eks_cluster.this[0].vpc_config[0].security_group_ids),
-  )) : []
-}
-
-data "aws_eks_cluster" "this" {
-  count = var.env == "prod" ? 1 : 0
-  name  = local.eks_cluster_name
+  # EKS module cluster SG; cluster primary SG is keyed statically for for_each.
+  argocd_api_ingress_sgs = var.env == "prod" ? {
+    cluster = module.eks.aws_security_group.cluster[0].id
+    primary = module.eks.cluster_primary_security_group_id
+  } : {}
 }
 
 data "aws_eks_cluster" "platform" {
@@ -45,7 +41,7 @@ data "aws_security_group" "platform_node" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "argocd_from_platform_nodes" {
-  for_each = var.env == "prod" ? toset(local.argocd_api_ingress_sgs) : toset([])
+  for_each = var.env == "prod" ? local.argocd_api_ingress_sgs : {}
 
   security_group_id            = each.value
   referenced_security_group_id = data.aws_security_group.platform_node[0].id
