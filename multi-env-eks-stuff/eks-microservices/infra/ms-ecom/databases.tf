@@ -17,7 +17,7 @@
 
 locals {
   database_environments = var.enable_databases && var.enable_cluster_resources ? {
-    (var.env) = local.cluster_env_cfg
+    (var.env) = merge(local.cluster_env_cfg, { namespace = local.cluster_namespace })
   } : {}
 
   cnpg_clusters = var.enable_databases && var.cnpg_enabled ? {

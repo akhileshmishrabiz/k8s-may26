@@ -13,7 +13,9 @@ resource "helm_release" "eso" {
   set = [
     {
       name  = "installCRDs"
-      value = "false"
+      value = "true"
     }
   ]
+
+  timeout = 600
 }

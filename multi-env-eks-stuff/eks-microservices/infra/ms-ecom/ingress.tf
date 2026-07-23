@@ -14,7 +14,7 @@ locals {
         for svc_key, svc_cfg in coalesce(try(env_cfg.ingress_services, null), var.ingress_services) : {
           key               = "${env_key}-${svc_key}"
           env_key           = env_key
-          namespace         = env_cfg.namespace
+          namespace         = local.cluster_namespace
           environment_label = coalesce(try(env_cfg.environment_label, null), env_key)
           svc_key           = svc_key
           host = coalesce(

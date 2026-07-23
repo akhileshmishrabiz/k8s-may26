@@ -1,13 +1,9 @@
-data "aws_vpc" "eks_vpc" {
-  filter {
-    name = "tag:Name"
-    values = [local.vpc_name]
-  }
-}
-
-
 data "aws_eks_cluster" "cluster" {
   name = local.eks_cluster_name
+}
+
+data "aws_vpc" "eks_vpc" {
+  id = data.aws_eks_cluster.cluster.vpc_config[0].vpc_id
 }
 
 data "aws_eks_cluster_auth" "cluster" {

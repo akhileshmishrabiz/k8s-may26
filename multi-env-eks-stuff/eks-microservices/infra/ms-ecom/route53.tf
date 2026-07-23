@@ -10,7 +10,7 @@ resource "time_sleep" "wait_for_service_ingress" {
   for_each = local.ingress_services
 
   depends_on      = [kubernetes_ingress_v1.service]
-  create_duration = "60s"
+  create_duration = "180s"
 }
 
 data "kubernetes_ingress_v1" "service" {

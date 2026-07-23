@@ -289,7 +289,7 @@ resource "kubernetes_ingress_v1" "grafana_ingress" {
       "alb.ingress.kubernetes.io/healthcheck-path"         = "/api/health"
       "alb.ingress.kubernetes.io/healthcheck-protocol"     = "HTTP"
       "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
-      "alb.ingress.kubernetes.io/tags"                     = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
+      "alb.ingress.kubernetes.io/tags"                     = "Environment=${local.alb_environment_tag},ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
       "alb.ingress.kubernetes.io/group.name"               = local.alb_group_name
     }
   }
@@ -343,7 +343,7 @@ resource "kubernetes_ingress_v1" "prometheus_ingress" {
       "alb.ingress.kubernetes.io/healthcheck-path"         = "/-/healthy"
       "alb.ingress.kubernetes.io/healthcheck-protocol"     = "HTTP"
       "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
-      "alb.ingress.kubernetes.io/tags"                     = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
+      "alb.ingress.kubernetes.io/tags"                     = "Environment=${local.alb_environment_tag},ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
       "alb.ingress.kubernetes.io/group.name"               = local.alb_group_name
     }
   }

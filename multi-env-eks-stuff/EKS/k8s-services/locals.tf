@@ -22,4 +22,7 @@ locals {
   platform_vault_url        = "https://vault.${var.app_subdomain}.${var.domain_name}"
   platform_vault_addr       = "${local.platform_vault_url}/"
   platform_monitoring_ns    = "${local.dev_env_prefix}monitoring"
+
+  # ALB ingress group tags must match across all ingresses sharing alb_group_name.
+  alb_environment_tag = var.env == "prod" ? "production" : "development"
 }

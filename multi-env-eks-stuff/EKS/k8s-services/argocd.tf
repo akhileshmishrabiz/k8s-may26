@@ -44,7 +44,7 @@ resource "kubernetes_ingress_v1" "argocd_ingress_tls" {
       "alb.ingress.kubernetes.io/healthcheck-path"         = "/"
       "alb.ingress.kubernetes.io/healthcheck-protocol"     = "HTTP"
       "alb.ingress.kubernetes.io/load-balancer-attributes" = "idle_timeout.timeout_seconds=60"
-      "alb.ingress.kubernetes.io/tags"                     = "Environment=production,ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
+      "alb.ingress.kubernetes.io/tags"                     = "Environment=${local.alb_environment_tag},ManagedBy=Terraform,Name=${var.app_subdomain}-ingress"
       "alb.ingress.kubernetes.io/group.name"               = local.alb_group_name
     }
   }
