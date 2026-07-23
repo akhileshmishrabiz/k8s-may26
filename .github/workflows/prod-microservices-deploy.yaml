@@ -65,7 +65,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::879381241087:role/aws-github-oidc-march26
-          aws-region: ${{ env.aws_region }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -95,13 +95,16 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout argo-prod branch
         uses: actions/checkout@v4
+        with:
+          ref: argo-prod
+          fetch-depth: 0
 
       - name: Setup yq
         uses: mikefarah/yq@v4.44.3
 
-      - name: Update Helm values with new image tags
+      - name: Update Helm values and push to argo-prod
         run: |
           IMAGE_TAG="${{ github.sha }}"
           VALUES_FILE="multi-env-eks-stuff/eks-microservices/environments/prod/value.yaml"
@@ -116,15 +119,11 @@ jobs:
           yq -i '.frontend.image = "'"${{ env.ECR_REGISTRY }}/prod-ecommerce-frontend:${IMAGE_TAG}"'"' $VALUES_FILE
           yq -i '.seedJob.image = "'"${{ env.ECR_REGISTRY }}/prod-ecommerce-seed:${IMAGE_TAG}"'"' $VALUES_FILE
           yq -i '.global.imagePullPolicy = "IfNotPresent"' $VALUES_FILE
-      
-        # update the value yaml file in argo-prod branch
-      - name: Update value yaml file in argo-prod branch
-        run: |
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout argo-prod
-          git add multi-env-eks-stuff/eks-microservices/environments/prod/value.yaml
-          git commit -m "chore: update image tags to ${{ github.sha }}" || echo "No changes"
+          git add "$VALUES_FILE"
+          git commit -m "chore: update image tags to ${IMAGE_TAG}" || echo "No changes"
           git push origin argo-prod
 
   
