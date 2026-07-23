@@ -1,24 +1,30 @@
 #!/usr/bin/env bash
-# Tear down dev EKS stack (reverse of deploy order). Requires valid AWS creds for ap-south-1.
+# Tear down dev + prod EKS stacks (reverse of deploy order). Requires valid AWS creds for ap-south-1.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-TFVARS="-var-file=env/dev.tfvars"
 
 aws sts get-caller-identity >/dev/null
 
 destroy() {
   local dir="$1"
-  echo "=== destroy: $dir ==="
+  local env="$2"
+  echo "=== destroy: $dir (env=$env) ==="
   cd "$ROOT/$dir"
-  terraform init -input=false
-  terraform destroy $TFVARS -auto-approve
+  terraform init -backend-config="vars/${env}.tfbackend" -reconfigure -input=false
+  terraform destroy -var-file="vars/${env}.tfvars" -auto-approve
 }
 
-destroy eks-microservices/infra/observability
-destroy eks-microservices/infra/ms-ecom
-destroy eks-microservices/infra/vault-secrets
-destroy EKS/k8s-services
-destroy EKS/core-cluster
+for env in prod dev; do
+  destroy eks-microservices/infra/ms-ecom "$env"
+done
 
-echo "Dev stack destroyed."
+for env in prod dev; do
+  destroy EKS/k8s-services "$env"
+done
+
+for env in prod dev; do
+  destroy EKS/core-cluster "$env"
+done
+
+echo "Dev and prod stacks destroyed."

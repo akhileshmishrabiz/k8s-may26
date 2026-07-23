@@ -20,6 +20,23 @@ provider "kubernetes" {
   token                  = data.aws_eks_cluster_auth.cluster.token
 }
 
+provider "kubernetes" {
+  alias = "remote"
+
+  host = coalesce(
+    try(values(data.aws_eks_cluster.argocd_remote)[0].endpoint, null),
+    data.aws_eks_cluster.cluster.endpoint,
+  )
+  cluster_ca_certificate = base64decode(coalesce(
+    try(values(data.aws_eks_cluster.argocd_remote)[0].certificate_authority[0].data, null),
+    data.aws_eks_cluster.cluster.certificate_authority[0].data,
+  ))
+  token = coalesce(
+    try(values(data.aws_eks_cluster_auth.argocd_remote)[0].token, null),
+    data.aws_eks_cluster_auth.cluster.token,
+  )
+}
+
 data "aws_eks_cluster" "cluster" {
   name = local.cluster_name
 }

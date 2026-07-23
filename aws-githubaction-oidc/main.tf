@@ -1,17 +1,19 @@
 locals {
   github_repo = [
-    { user = "akhileshmishrabiz", repo = "k8s-bootcamp-dec25", branch = "main" },
-    { user = "akhileshmishrabiz", repo = "k8sbootcamp-march26", branch = "*" },
-    { user = "akhileshmishrabiz", repo = "k8s-may26", branch = "main" },
+    { user = "akhileshmishrabiz", repo = "k8s-bootcamp-dec25", branches = ["main"], tags = false, wildcard = false },
+    { user = "akhileshmishrabiz", repo = "k8sbootcamp-march26", branches = [], tags = false, wildcard = true },
+    { user = "akhileshmishrabiz", repo = "k8s-may26", branches = ["main"], tags = true, wildcard = false },
   ]
-  # branch = "main" -> repo:OWNER/REPO:ref:refs/heads/main
-  # branch = "*"     -> repo:OWNER/REPO:*  (any ref, tag, environment, etc.)
-  github_oidc_subjects = distinct([
-    for r in local.github_repo :
-    r.branch == "*" ?
-    "repo:${r.user}/${r.repo}:*" :
-    "repo:${r.user}/${r.repo}:ref:refs/heads/${r.branch}"
-  ])
+
+  # branch refs  -> repo:OWNER/REPO:ref:refs/heads/<branch>
+  # tag refs     -> repo:OWNER/REPO:ref:refs/tags/*  (prod workflow on tag push)
+  # wildcard     -> repo:OWNER/REPO:*
+  github_oidc_subjects = distinct(flatten([
+    for r in local.github_repo : r.wildcard ? ["repo:${r.user}/${r.repo}:*"] : concat(
+      [for b in r.branches : "repo:${r.user}/${r.repo}:ref:refs/heads/${b}"],
+      r.tags ? ["repo:${r.user}/${r.repo}:ref:refs/tags/*"] : []
+    )
+  ]))
 }
 
 

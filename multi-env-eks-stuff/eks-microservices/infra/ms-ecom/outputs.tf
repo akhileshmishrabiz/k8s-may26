@@ -91,8 +91,14 @@ output "cnpg_cluster_names" {
 
 output "argocd_destination_servers" {
   description = "ArgoCD sync target per environment (separate EKS cluster API or registered cluster name)"
+  value       = local.argocd_cluster_servers
+}
+
+output "argocd_registered_clusters" {
+  description = "Remote clusters registered with ArgoCD (cluster secret names)"
   value = {
-    for env_key, env_cfg in var.environments : env_key => env_cfg.destination_server
+    for env_key, secret in kubernetes_secret_v1.argocd_cluster :
+    env_key => secret.metadata[0].name
   }
 }
 

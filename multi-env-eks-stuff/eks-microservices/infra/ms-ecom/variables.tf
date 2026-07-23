@@ -86,7 +86,7 @@ variable "environments" {
     prod = {
       namespace          = "ecommerce"
       target_revision    = "argo-prod"
-      destination_server = "https://prod-cluster-endpoint" # replace with prod cluster API or ArgoCD name (e.g. eks-prod)
+      destination_server = "https://kubernetes.default.svc" # overridden on dev apply via argocd-cluster.tf data source
       subdomain          = "shop"
       values_file        = "../environments/prod/value.yaml"
       environment_label  = "production"
@@ -236,6 +236,34 @@ variable "argocd_namespace" {
   default     = "argocd"
 }
 
+variable "argocd_remote_clusters" {
+  description = "Remote EKS clusters to register with dev ArgoCD (RBAC + cluster secret). Keys must not match var.env on the applying cluster."
+  type = map(object({
+    cluster_name = string
+    secret_name  = optional(string)
+    environment  = string
+  }))
+  default = {
+    prod = {
+      cluster_name = "prod-eks-cluster"
+      secret_name  = "prod-eks-cluster"
+      environment  = "prod"
+    }
+  }
+}
+
+variable "argocd_manager_service_account" {
+  description = "ServiceAccount name ArgoCD uses on remote clusters (matches argocd cluster add defaults)"
+  type        = string
+  default     = "argocd-manager"
+}
+
+variable "argocd_manager_cluster_role" {
+  description = "ClusterRole name ArgoCD uses on remote clusters"
+  type        = string
+  default     = "argocd-manager-role"
+}
+
 variable "argocd_project" {
   description = "ArgoCD AppProject to deploy into"
   default     = "default"
@@ -248,7 +276,7 @@ variable "git_repo_url" {
 
 variable "helm_chart_path" {
   description = "Path within the git repo to the ecommerce services-only Helm chart"
-  default     = "eks-microservices/helm-services"
+  default     = "multi-env-eks-stuff/eks-microservices/helm-services"
 }
 
 variable "argocd_sync_automated" {

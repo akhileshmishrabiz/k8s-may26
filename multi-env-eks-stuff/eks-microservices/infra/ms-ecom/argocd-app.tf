@@ -6,7 +6,7 @@ locals {
     for env, cfg in var.environments : env => {
       namespace          = "${env}-${cfg.namespace}"
       target_revision    = cfg.target_revision
-      destination_server = cfg.destination_server
+      destination_server = lookup(local.argocd_cluster_servers, env, cfg.destination_server)
       values_file        = coalesce(try(cfg.values_file, null), "../environments/${env}/value.yaml")
       release_name       = coalesce(try(cfg.helm_release_name, null), "ecommerce-${env}")
       app_name           = coalesce(try(cfg.argocd_app_name, null), "ecommerce-${env}")
