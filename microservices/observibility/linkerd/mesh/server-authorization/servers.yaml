@@ -1,0 +1,74 @@
+# Linkerd Server resources — one HTTP server per microservice port.
+# AuthorizationPolicy below restricts callers to meshed identities in ecommerce.
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: product-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: product-service
+  port: 8001
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: user-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: user-service
+  port: 8002
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: cart-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: cart-service
+  port: 8003
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: order-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  port: 8004
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: payment-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: payment-service
+  port: 8005
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: notification-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: notification-service
+  port: 8006
+  proxyProtocol: HTTP/1

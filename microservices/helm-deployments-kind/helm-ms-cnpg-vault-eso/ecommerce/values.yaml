@@ -215,7 +215,7 @@ frontend:
 #   kubectl apply -f ./monitor/tracing/
 # (or run ./helm-cnpg-vault-deploy.sh with TRACING_ENABLED=true)
 tracing:
-  enabled: false
+  enabled: true
   # OTLP/HTTP endpoint reachable from app pods. Defaults to the in-cluster
   # OTel Collector deployed by ./monitor/tracing/.
   endpoint: http://otel-collector.monitoring.svc.cluster.local:4318

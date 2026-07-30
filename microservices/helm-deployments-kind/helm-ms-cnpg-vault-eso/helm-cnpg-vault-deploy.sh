@@ -318,28 +318,28 @@ print_step "7" "Building Docker Images"
 
 print_info "Building all microservice images..."
 
-docker build -t product-service:local ../../apps/services/product-service
+docker build -t product-service:local ../../app/services/product-service
 print_success "product-service:local built"
 
-docker build -t user-service:local ../../apps/services/user-service
+docker build -t user-service:local ../../app/services/user-service
 print_success "user-service:local built"
 
-docker build -t cart-service:local ../../apps/services/cart-service
+docker build -t cart-service:local ../../app/services/cart-service
 print_success "cart-service:local built"
 
-docker build -t order-service:local ../../apps/services/order-service
+docker build -t order-service:local ../../app/services/order-service
 print_success "order-service:local built"
 
-docker build -t payment-service:local ../../apps/services/payment-service
+docker build -t payment-service:local ../../app/services/payment-service
 print_success "payment-service:local built"
 
-docker build -t notification-service:local ../../apps/services/notification-service
+docker build -t notification-service:local ../../app/services/notification-service
 print_success "notification-service:local built"
 
-docker build -t frontend:local ../../apps/frontend
+docker build -t frontend:local ../../app/frontend
 print_success "frontend:local built"
 
-docker build -t ms-ecom-seed:latest ../../apps/seed-job
+docker build -t ms-ecom-seed:latest ../../app/seed-job
 print_success "ms-ecom-seed:latest built"
 
 # ============================================================
@@ -499,7 +499,7 @@ kubectl delete job seed-data-job -n ${NAMESPACE} 2>/dev/null || true
 
 # Apply the seed job
 print_info "Applying seed job..."
-kubectl apply -f ./seed-job/seed-job.yaml
+kubectl apply -f ../../app/seed-job/seed-job.yaml
 
 # Wait for the seed job to complete
 print_info "Waiting for seed job to complete..."

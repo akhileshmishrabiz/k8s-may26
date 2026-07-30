@@ -1,0 +1,10 @@
+# Require mesh mTLS identities for traffic between meshed workloads in ecommerce.
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: ecommerce-meshed
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: Namespace
+      name: ecommerce

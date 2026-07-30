@@ -1,0 +1,40 @@
+# Linkerd Viz extension values for Kind dev cluster.
+
+dashboard:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 64Mi
+      limit: 256Mi
+
+metricsAPI:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 64Mi
+      limit: 256Mi
+
+tap:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 64Mi
+      limit: 256Mi
+
+tapInjector:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 64Mi
+      limit: 256Mi
+
+# Prometheus in monitoring namespace scrapes via linkerd-viz metrics-api Service.
+prometheusUrl: "http://prometheus.monitoring.svc.cluster.local:9090"

@@ -1,0 +1,95 @@
+# OPTIONAL strict mode — apply manually after verifying Prometheus still scrapes:
+#   kubectl apply -f authorization-policies.strict.yaml
+#
+# Requires meshed callers only; blocks unmeshed Prometheus scrapes unless you also
+# mesh the monitoring namespace or scrape via linkerd-viz metrics-api.
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: product-service-meshed-only
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: product-service-http
+  requiredAuthenticationRefs:
+    - name: ecommerce-meshed
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: user-service-meshed-only
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: user-service-http
+  requiredAuthenticationRefs:
+    - name: ecommerce-meshed
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: cart-service-meshed-only
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: cart-service-http
+  requiredAuthenticationRefs:
+    - name: ecommerce-meshed
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: order-service-meshed-only
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: order-service-http
+  requiredAuthenticationRefs:
+    - name: ecommerce-meshed
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: payment-service-meshed-only
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: payment-service-http
+  requiredAuthenticationRefs:
+    - name: ecommerce-meshed
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: notification-service-meshed-only
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: notification-service-http
+  requiredAuthenticationRefs:
+    - name: ecommerce-meshed
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
