@@ -65,12 +65,12 @@ logNamespaces:
 # App namespace for Prometheus pod/service discovery
 appNamespace: ecommerce
 
-# Linkerd Viz metrics-api scrape target (job always configured; target down until mesh installed).
-# Install mesh: observibility/linkerd/deploy.sh
+# Linkerd Viz metrics-api scrape target (enable after: observibility/linkerd/deploy.sh)
 linkerdViz:
+  enabled: false
   namespace: linkerd-viz
-  service: linkerd-viz-metrics-api
-  port: 8085
+  service: metrics-api
+  port: 9995
 
 tempo:
   enabled: true

@@ -1,5 +1,5 @@
-# Linkerd Server resources — one HTTP server per microservice port.
-# AuthorizationPolicy below restricts callers to meshed identities in ecommerce.
+# Linkerd Server resources — HTTP microservices (8001-8006) plus data-plane TCP ports.
+# AuthorizationPolicy in authorization-policies.strict.yaml ties callers to ServiceAccounts.
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -72,3 +72,29 @@ spec:
       app: notification-service
   port: 8006
   proxyProtocol: HTTP/1
+---
+# RabbitMQ AMQP — order-service publishes, notification-service consumes.
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: rabbitmq-amqp
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: rabbitmq
+  port: 5672
+  proxyProtocol: unknown
+---
+# Mailpit SMTP — notification-service sends email.
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: mailpit-smtp
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: mailpit
+  port: 1025
+  proxyProtocol: unknown

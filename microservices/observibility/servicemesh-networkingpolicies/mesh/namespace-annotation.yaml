@@ -5,3 +5,5 @@ metadata:
   name: ecommerce
   labels:
     linkerd.io/inject: enabled
+  annotations:
+    linkerd.io/inject: enabled

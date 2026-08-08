@@ -12,6 +12,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CNI_INSTALL_SCRIPT="${SCRIPT_DIR}/servicemesh-networkingpolicies/cni/install-cilium.sh"
 CLUSTER_NAME="ecommerce-vault"
 NAMESPACE="monitoring"
 RELEASE_NAME="observability"
@@ -76,16 +77,47 @@ print_success "Docker is running"
 # ============================================================
 print_step "1" "Setting Up Kind Cluster"
 
+CLUSTER_JUST_CREATED=false
+
 if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
     print_info "Cluster '${CLUSTER_NAME}' already exists — reusing"
     kubectl config use-context "kind-${CLUSTER_NAME}"
 else
-    print_info "Creating cluster '${CLUSTER_NAME}'..."
+    print_info "Creating cluster '${CLUSTER_NAME}' (disableDefaultCNI — Cilium will be installed next)..."
     kind create cluster --config "${SCRIPT_DIR}/kind-config.yaml" --name "${CLUSTER_NAME}"
+    CLUSTER_JUST_CREATED=true
     print_success "Kind cluster created"
 fi
 
-kubectl wait --for=condition=ready node --all --timeout=120s
+# ============================================================
+# STEP 1b: Cilium CNI + Hubble (NetworkPolicy enforcement + flow visibility)
+# ============================================================
+print_step "1b" "Installing Cilium CNI + Hubble"
+
+if [ ! -x "${CNI_INSTALL_SCRIPT}" ]; then
+    print_error "CNI install script not found: ${CNI_INSTALL_SCRIPT}"
+fi
+
+if [ "${CLUSTER_JUST_CREATED}" = true ]; then
+    print_info "Fresh cluster — installing Cilium before any workloads..."
+    bash "${CNI_INSTALL_SCRIPT}" --with-cluster
+else
+    if kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep -q Running; then
+        print_success "Cilium already running — skipping CNI install"
+    elif kubectl get pods -n kube-system -l k8s-app=calico-node --no-headers 2>/dev/null | grep -q Running; then
+        print_info "Cluster is using Calico — recreate for Cilium + Hubble:"
+        print_info "  kind delete cluster --name ${CLUSTER_NAME} && ./deploy.sh"
+    elif kubectl get pods -n kube-system -l app=kindnet --no-headers 2>/dev/null | grep -q Running; then
+        print_info "Cluster is using kindnet — NetworkPolicies will NOT be enforced."
+        print_info "Recreate for Cilium: kind delete cluster --name ${CLUSTER_NAME} && ./deploy.sh"
+    else
+        print_info "No CNI detected — attempting Cilium install..."
+        bash "${CNI_INSTALL_SCRIPT}" --with-cluster || \
+            print_info "CNI install skipped — see ${CNI_INSTALL_SCRIPT} --help"
+    fi
+    kubectl wait --for=condition=ready node --all --timeout=120s
+fi
+
 print_success "Cluster is ready"
 
 # ============================================================
@@ -252,9 +284,16 @@ echo "  kubectl logs -n monitoring deploy/grafana"
 echo "  kubectl logs -n monitoring deploy/loki"
 echo "  helm upgrade ${RELEASE_NAME} ${CHART_PATH} -n ${NAMESPACE}"
 echo ""
+echo -e "${YELLOW}NetworkPolicies (requires Cilium — installed in step 1b):${NC}"
+echo "  ${SCRIPT_DIR}/servicemesh-networkingpolicies/network-policies/deploy-np.sh --apply"
+echo ""
+echo -e "${YELLOW}Hubble — view blocked traffic:${NC}"
+echo "  http://localhost:12000                              # Hubble UI"
+echo "  hubble observe --verdict DROPPED -n ecommerce -f  # CLI (brew install hubble)"
+echo ""
 echo -e "${YELLOW}Service Mesh + NetworkPolicies (optional, existing cluster):${NC}"
-echo "  ${SCRIPT_DIR}/linkerd/deploy.sh              # Linkerd + policies on ecommerce-vault"
-echo "  ${SCRIPT_DIR}/linkerd/deploy.sh --mesh-only  # Linkerd only"
+echo "  ${SCRIPT_DIR}/servicemesh-networkingpolicies/deploy.sh              # Linkerd + policies"
+echo "  ${SCRIPT_DIR}/servicemesh-networkingpolicies/deploy.sh --mesh-only  # Linkerd only"
 echo ""
 echo -e "${YELLOW}Cleanup:${NC}"
 echo "  helm uninstall ${RELEASE_NAME} -n ${NAMESPACE}"

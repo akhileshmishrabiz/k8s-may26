@@ -5,6 +5,7 @@ Top 4xx (Client Errors)
 403 Forbidden – authenticated but not permitted to access resource
 404 Not Found – resource doesn't exist
 429 Too Many Requests – rate limit exceeded
+timeout -> 
 
 Top 5xx (Server Errors)
 

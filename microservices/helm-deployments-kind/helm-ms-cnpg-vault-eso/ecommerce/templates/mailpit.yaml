@@ -17,6 +17,7 @@ spec:
       labels:
         app: mailpit
     spec:
+      serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "mailpit") }}
       containers:
         - name: mailpit
           image: {{ .Values.services.mailpit.image }}

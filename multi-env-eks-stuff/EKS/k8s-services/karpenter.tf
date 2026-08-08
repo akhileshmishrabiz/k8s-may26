@@ -1,3 +1,4 @@
+
 # # Allow kubelets on Karpenter-launched EC2 instances to join the cluster.
 # # EKS 1.33 uses Access Entries (not aws-auth) — type EC2_LINUX maps the node role.
 resource "aws_eks_access_entry" "karpenter_node" {

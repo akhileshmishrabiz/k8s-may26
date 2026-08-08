@@ -21,6 +21,7 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "9121"
     spec:
+      serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "redis") }}
       containers:
         - name: redis
           image: {{ .Values.redis.image }}

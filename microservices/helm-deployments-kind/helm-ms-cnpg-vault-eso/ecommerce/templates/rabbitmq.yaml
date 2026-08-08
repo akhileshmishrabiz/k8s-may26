@@ -31,6 +31,7 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "15692"
     spec:
+      serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "rabbitmq") }}
       containers:
         - name: rabbitmq
           image: {{ .Values.rabbitmq.image }}

@@ -4,6 +4,12 @@ global:
   environment: development
   imagePullPolicy: Never
 
+# Dedicated ServiceAccount per workload (used by Linkerd mesh identity + AuthorizationPolicy).
+# Names default to the service name (e.g. product-service). Override per key if needed.
+serviceAccounts:
+  create: true
+  names: {}
+
 # Vault configuration
 # Secrets are managed by Vault + External Secrets Operator
 vault:

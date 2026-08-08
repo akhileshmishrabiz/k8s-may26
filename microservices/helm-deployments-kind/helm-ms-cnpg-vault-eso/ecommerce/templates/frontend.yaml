@@ -17,6 +17,7 @@ spec:
       labels:
         app: frontend
     spec:
+      serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "frontend") }}
       containers:
         - name: frontend
           image: {{ .Values.frontend.image }}

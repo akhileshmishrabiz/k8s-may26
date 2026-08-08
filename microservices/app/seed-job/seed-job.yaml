@@ -3,10 +3,15 @@ kind: Job
 metadata:
   name: seed-data-job
   namespace: ecommerce
+  labels:
+    app: seed-data-job
 spec:
   ttlSecondsAfterFinished: 300
   backoffLimit: 3
   template:
+    metadata:
+      labels:
+        app: seed-data-job
     spec:
       containers:
       - name: seed-data
@@ -15,4 +20,6 @@ spec:
         env:
         - name: API_URL
           value: "http://api-gateway.ecommerce.svc.cluster.local"
+        - name: SEED_PASSWORD
+          value: "Password123!"
       restartPolicy: Never

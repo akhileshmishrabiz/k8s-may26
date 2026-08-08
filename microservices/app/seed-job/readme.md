@@ -1,6 +1,6 @@
-tea# E-Commerce Seed Data Job
+# E-Commerce Seed Data Job
 
-Kubernetes job to seed product data into the e-commerce microservices via API gateway.
+Kubernetes Job that seeds users, products, and a demo cart into the e-commerce microservices via the API gateway.
 
 ## ECR Image
 
@@ -10,58 +10,40 @@ Kubernetes job to seed product data into the e-commerce microservices via API ga
 
 ## Prerequisites
 
-- AWS CLI configured with appropriate credentials
+- AWS CLI configured with appropriate credentials (for ECR)
 - Docker installed
 - kubectl configured to access your cluster
+- API gateway and backend services running in the `ecommerce` namespace
 
-## Steps to Pull from ECR
-
-### 1. Authenticate Docker with ECR
-
-```bash
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 879381241087.dkr.ecr.us-east-1.amazonaws.com
-```
-
-### 2. Pull the Image
+## Run the Job Manually
 
 ```bash
-docker pull 879381241087.dkr.ecr.us-east-1.amazonaws.com/ms-ecom-seed:latest
-```
+# From microservices/app/seed-job/
+docker build -t ms-ecom-seed:latest .
+kind load docker-image ms-ecom-seed:latest --name ecommerce-vault   # Kind only
 
-### 3. Create ECR Pull Secret in Kubernetes (for EKS/non-Kind clusters)
+# Required when Calico NetworkPolicies are active
+kubectl apply -f ../../observibility/servicemesh-networkingpolicies/network-policies/allow-seed-job.yaml
 
-```bash
-kubectl create secret docker-registry ecr-secret \
-  --docker-server=879381241087.dkr.ecr.us-east-1.amazonaws.com \
-  --docker-username=AWS \
-  --docker-password=$(aws ecr get-login-password --region us-east-1) \
-  -n ecommerce
-```
-
-### 4. Run the Job
-
-For EKS clusters with ECR access:
-```bash
+kubectl delete job seed-data-job -n ecommerce --ignore-not-found
 kubectl apply -f seed-job.yaml
+kubectl wait --for=condition=complete job/seed-data-job -n ecommerce --timeout=300s
+kubectl logs job/seed-data-job -n ecommerce
+kubectl get jobs -n ecommerce
 ```
 
-For Kind clusters (load image locally first):
+For local docker-compose:
+
 ```bash
-docker pull 879381241087.dkr.ecr.us-east-1.amazonaws.com/ms-ecom-seed:latest
-kind load docker-image 879381241087.dkr.ecr.us-east-1.amazonaws.com/ms-ecom-seed:latest --name <cluster-name>
-kubectl apply -f seed-job.yaml
+# From microservices/
+./seed-data.sh
 ```
 
 ## Building the Image
 
 ```bash
-# Build
 docker build -t ms-ecom-seed:latest .
-
-# Tag for ECR
 docker tag ms-ecom-seed:latest 879381241087.dkr.ecr.us-east-1.amazonaws.com/ms-ecom-seed:latest
-
-# Push to ECR
 docker push 879381241087.dkr.ecr.us-east-1.amazonaws.com/ms-ecom-seed:latest
 ```
 
@@ -69,21 +51,40 @@ docker push 879381241087.dkr.ecr.us-east-1.amazonaws.com/ms-ecom-seed:latest
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `API_URL` | API Gateway URL | `http://localhost:8080` |
+| `API_URL` | API Gateway base URL | `http://localhost:8080` |
+| `SEED_PASSWORD` | Password for all test accounts | `Password123!` |
+| `PREFLIGHT_ATTEMPTS` | Health-check retries | `60` |
+| `PREFLIGHT_SLEEP` | Seconds between retries | `5` |
 
 ## Seeded Data
 
-The job seeds 15 products across categories:
-- Electronics (iPhone, Samsung, MacBook, Sony headphones, iPad)
-- Footwear (Nike, Adidas)
-- Clothing (Levi's, North Face)
-- Accessories (Ray-Ban)
-- Gaming (PS5, Nintendo Switch)
-- Home & Kitchen (Dyson, Instant Pot, KitchenAid)
+### Users (5 test accounts)
+
+All accounts share the same password (`Password123!` by default):
+
+| Email | Name |
+|-------|------|
+| john.doe@example.com | John Doe |
+| jane.smith@example.com | Jane Smith |
+| bob.johnson@example.com | Bob Johnson |
+| alice.williams@example.com | Alice Williams |
+| charlie.brown@example.com | Charlie Brown |
+
+### Products (25 items)
+
+Categories: Electronics, Footwear, Clothing, Accessories, Gaming, Home & Kitchen, Books, Sports, Outdoor.
+
+### Demo cart
+
+Logs in as `john.doe@example.com` and adds the first two products to their cart.
 
 ## Test Credentials
 
 ```
-Email: john.doe@example.com
-Password: NewPassword123!
+Email:    john.doe@example.com
+Password: Password123!
 ```
+
+## Integration with Deploy Scripts
+
+`helm-cnpg-vault-deploy.sh` (Step 14) builds the seed image, applies the seed-job NetworkPolicy, and runs this Job automatically after services are healthy.

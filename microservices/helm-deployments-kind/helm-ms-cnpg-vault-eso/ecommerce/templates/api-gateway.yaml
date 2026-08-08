@@ -176,6 +176,7 @@ spec:
       labels:
         app: api-gateway
     spec:
+      serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "api-gateway") }}
       containers:
         - name: nginx
           image: {{ .Values.apiGateway.image }}

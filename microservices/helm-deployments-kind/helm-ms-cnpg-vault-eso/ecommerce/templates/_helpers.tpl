@@ -52,6 +52,28 @@ Namespace
 {{- end }}
 
 {{/*
+ServiceAccount name for a workload (defaults to the service/deployment name).
+Usage: include "ecommerce.serviceAccountName" (dict "root" . "name" "product-service")
+*/}}
+{{- define "ecommerce.serviceAccountName" -}}
+{{- $root := .root -}}
+{{- $name := .name -}}
+{{- if and $root.Values.serviceAccounts $root.Values.serviceAccounts.names (hasKey $root.Values.serviceAccounts.names $name) -}}
+{{- index $root.Values.serviceAccounts.names $name -}}
+{{- else -}}
+{{- $name -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Standard pod labels for mesh-aware workloads.
+Usage: include "ecommerce.podLabels" (dict "app" "product-service")
+*/}}
+{{- define "ecommerce.podLabels" -}}
+app: {{ .app }}
+{{- end }}
+
+{{/*
 OpenTelemetry env vars (rendered only when .Values.tracing.enabled).
 Usage: pass a dict with `serviceName`:
     {{- include "ecommerce.otelEnv" (dict "root" . "serviceName" "order-service") | nindent 12 }}

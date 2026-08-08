@@ -52,6 +52,9 @@ identityResources:
 # Skip outbound telemetry in local dev.
 disableHeartBeat: true
 
+# Use Linkerd CNI plugin (required when Cilium is the cluster CNI)
+cniEnabled: true
+
 # Allow kubelet probes and host-network NodePort paths on non-meshed ports.
 # Meshed app traffic uses the data-plane proxy automatically.
 podMonitor:

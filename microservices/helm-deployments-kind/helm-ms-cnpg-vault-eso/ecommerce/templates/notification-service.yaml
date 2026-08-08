@@ -21,6 +21,7 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "{{ .Values.services.notificationService.port }}"
     spec:
+      serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "notification-service") }}
       containers:
         - name: notification-service
           image: {{ .Values.services.notificationService.image }}

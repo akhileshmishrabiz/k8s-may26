@@ -61,13 +61,14 @@ data:
             action: replace
             target_label: job
 
-      # Optional: target stays down until linkerd-viz is installed (does not break Prometheus).
+      {{- if .Values.linkerdViz.enabled }}
       - job_name: linkerd-viz
         honor_labels: true
         scrape_interval: 30s
         static_configs:
           - targets:
               - {{ .Values.linkerdViz.service }}.{{ .Values.linkerdViz.namespace }}.svc.cluster.local:{{ .Values.linkerdViz.port }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap

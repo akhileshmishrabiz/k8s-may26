@@ -1,6 +1,11 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: ecommerce-vault
+# Cilium replaces kindnet — required for NetworkPolicy enforcement + Hubble on Kind.
+# install-cilium.sh runs immediately after cluster create (see deploy.sh).
+networking:
+  disableDefaultCNI: true
+  podSubnet: "192.168.0.0/16"
 nodes:
   - role: control-plane
     extraPortMappings:
@@ -35,4 +40,12 @@ nodes:
       # Mailpit UI
       - containerPort: 30825
         hostPort: 8025
+        protocol: TCP
+      # Hubble UI (Cilium flow / policy visualization)
+      - containerPort: 31200
+        hostPort: 12000
+        protocol: TCP
+      # Linkerd Viz dashboard (service mesh topology)
+      - containerPort: 30884
+        hostPort: 8084
         protocol: TCP

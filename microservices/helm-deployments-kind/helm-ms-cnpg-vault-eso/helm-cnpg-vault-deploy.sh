@@ -449,8 +449,30 @@ if [ -d "./monitor" ]; then
     kubectl rollout status daemonset/promtail -n monitoring --timeout=180s 2>/dev/null || true
 
     print_success "Monitoring stack deployed"
+elif [ -d "../../observibility/monitoring" ]; then
+    OBS_CHART="../../observibility/monitoring"
+    print_info "Deploying observability Helm chart from ${OBS_CHART}..."
+    helm upgrade --install observability "${OBS_CHART}" \
+        --namespace monitoring \
+        --create-namespace \
+        --timeout 5m
+
+    print_info "Waiting for Prometheus..."
+    kubectl wait --for=condition=available deployment/prometheus -n monitoring --timeout=180s 2>/dev/null || true
+
+    print_info "Waiting for Grafana..."
+    kubectl wait --for=condition=available deployment/grafana -n monitoring --timeout=180s 2>/dev/null || true
+
+    print_info "Waiting for Loki..."
+    kubectl wait --for=condition=available deployment/loki -n monitoring --timeout=180s 2>/dev/null || true
+
+    print_info "Waiting for Promtail..."
+    kubectl rollout status daemonset/promtail -n monitoring --timeout=180s 2>/dev/null || true
+
+    print_success "Monitoring stack deployed via Helm"
 else
-    print_info "./monitor directory not found, skipping monitoring stack"
+    print_info "No monitoring manifests found (./monitor or ../../observibility/monitoring) — skipping"
+    print_info "Run microservices/observibility/deploy.sh for the full observability stack"
 fi
 
 # ============================================================
@@ -484,20 +506,32 @@ print_step "14" "Loading Seed Data via Kubernetes Job"
 print_info "Waiting for services to stabilize..."
 sleep 20
 
-# Seed Users first (runs inside user-service pod)
-print_info "Seeding users..."
-USER_POD=$(kubectl get pods -n ${NAMESPACE} -l app=user-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-if [ -n "$USER_POD" ]; then
-    kubectl exec -n ${NAMESPACE} ${USER_POD} -- node src/scripts/seed.js 2>/dev/null && \
-        print_success "Users seeded" || \
-        print_info "User seeding skipped"
+# Allow seed job egress when NetworkPolicies are deployed (Calico on Kind)
+NP_DIR="../../observibility/servicemesh-networkingpolicies/network-policies"
+if [ -f "${NP_DIR}/allow-seed-job.yaml" ]; then
+    kubectl apply -f "${NP_DIR}/allow-seed-job.yaml" 2>/dev/null && \
+        print_success "Seed job NetworkPolicy applied" || \
+        print_info "Seed job NetworkPolicy skipped (may already exist)"
 fi
+
+# Hard-reset products catalog (API DELETE is soft-delete and leaves SKU conflicts)
+print_info "Truncating products table for clean seed..."
+kubectl exec -n ${NAMESPACE} products-1 -- \
+  psql -U postgres -d products -c "TRUNCATE TABLE products RESTART IDENTITY CASCADE;" \
+  2>/dev/null && print_success "Products table truncated" || \
+  print_info "Products truncate skipped (cluster may use different DB layout)"
+
+# Rebuild seed image so Job picks up latest seed-data.sh
+print_info "Rebuilding seed job image..."
+docker build -t ms-ecom-seed:latest ../../app/seed-job >/dev/null
+kind load docker-image ms-ecom-seed:latest --name ${CLUSTER_NAME}
+print_success "ms-ecom-seed:latest loaded"
 
 # Delete existing seed job if it exists
 print_info "Cleaning up any existing seed job..."
 kubectl delete job seed-data-job -n ${NAMESPACE} 2>/dev/null || true
 
-# Apply the seed job
+# Apply the seed job (seeds users, products, and a demo cart via API gateway)
 print_info "Applying seed job..."
 kubectl apply -f ../../app/seed-job/seed-job.yaml
 
