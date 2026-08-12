@@ -89,7 +89,7 @@ services:
     enabled: true
     image: product-service:local
     port: 8001
-    replicas: 1
+    replicas: 2
     env: production
     logLevel: info
     resources:
@@ -104,7 +104,7 @@ services:
     enabled: true
     image: user-service:local
     port: 8002
-    replicas: 1
+    replicas: 2
     env: production
     jwtExpiry: "24h"
     logLevel: info
@@ -120,7 +120,7 @@ services:
     enabled: true
     image: cart-service:local
     port: 8003
-    replicas: 1
+    replicas: 2
     env: production
     logLevel: info
     resources:
@@ -135,7 +135,7 @@ services:
     enabled: true
     image: order-service:local
     port: 8004
-    replicas: 1
+    replicas: 2
     env: production
     logLevel: info
     resources:
@@ -150,7 +150,7 @@ services:
     enabled: true
     image: payment-service:local
     port: 8005
-    replicas: 1
+    replicas: 2
     env: development
     logLevel: INFO
     resources:
@@ -165,7 +165,7 @@ services:
     enabled: true
     image: notification-service:local
     port: 8006
-    replicas: 1
+    replicas: 2
     env: development
     logLevel: INFO
     smtp:
@@ -190,7 +190,7 @@ services:
 apiGateway:
   enabled: true
   image: nginx:alpine
-  replicas: 1
+  replicas: 2
   nodePort: 30080
   resources:
     requests:
@@ -204,7 +204,7 @@ apiGateway:
 frontend:
   enabled: true
   image: frontend:local
-  replicas: 1
+  replicas: 2
   nodePort: 30000
   resources:
     requests:

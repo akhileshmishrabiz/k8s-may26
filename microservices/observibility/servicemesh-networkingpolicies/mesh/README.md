@@ -32,6 +32,23 @@ CNPG Postgres pods (`products`, `users`, `orders`, `payments`) use `linkerd.io/i
 | `server-authorization/servers.yaml` | Server CRs (ports 8001-8006, 5672, 1025) |
 | `server-authorization/meshed-auth.yaml` | MeshTLSAuthentication — allowed caller ServiceAccounts per Server |
 | `server-authorization/authorization-policies.strict.yaml` | AuthorizationPolicy — one MTLS auth ref per Server (Linkerd limit) |
+| `retry-timeout/service-profiles.yaml` | ServiceProfile — 30s timeouts, retry budget, retries on 502/503/504 |
+
+## Retry and timeout policies
+
+Linkerd 2.14 configures **retries on the outbound (client) proxy** via `ServiceProfile` (HTTPRoute retries are not yet available in 2.14). Each profile is named after the destination Service FQDN, e.g. `user-service.ecommerce.svc.cluster.local`.
+
+| Destination | Callers (typical) | Timeout | Retries |
+|-------------|-------------------|---------|---------|
+| `product-service` | api-gateway, cart, order, user, payment, notification | 30s | 502/503/504 + budget |
+| `user-service` | api-gateway, cart, order, payment, notification | 30s | 502/503/504 + budget |
+| `cart-service` | api-gateway, order | 30s | 502/503/504 + budget |
+| `order-service` | api-gateway, payment | 30s | 502/503/504 + budget |
+| `payment-service` | api-gateway | 30s | 502/503/504 + budget |
+| `notification-service` | api-gateway (health) | 30s | 502/503/504 + budget |
+| `api-gateway` | frontend | 30s | 502/503/504 + budget |
+
+Retry budget defaults: `retryRatio: 0.2`, `minRetriesPerSecond: 10`, `ttl: 10s` (max ~20% extra load from retries).
 
 ## Apply
 
@@ -42,6 +59,7 @@ kubectl apply -f mesh/namespace-annotation.yaml
 kubectl apply -f mesh/cnpg-skip-injection.yaml
 kubectl apply -f mesh/redis-skip-ports.yaml
 kubectl apply -f mesh/server-authorization/
+kubectl apply -f mesh/retry-timeout/service-profiles.yaml
 ```
 
 ## Verify
@@ -51,4 +69,6 @@ linkerd check
 linkerd viz stat deploy -n ecommerce
 linkerd viz tap deploy/product-service -n ecommerce
 kubectl get authorizationpolicy,meshtlsauthentication,server -n ecommerce
+kubectl get serviceprofile -n ecommerce
+linkerd viz routes deploy/api-gateway -n ecommerce --to svc/user-service --to svc/order-service --to svc/payment-service -o wide
 ```

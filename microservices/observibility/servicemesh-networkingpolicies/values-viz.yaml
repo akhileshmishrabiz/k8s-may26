@@ -43,5 +43,6 @@ tapInjector:
       request: 64Mi
       limit: 256Mi
 
-# Prometheus in monitoring namespace scrapes via linkerd-viz metrics-api Service.
-prometheusUrl: "http://prometheus.monitoring.svc.cluster.local:9090"
+# metrics-api queries Linkerd Viz's bundled Prometheus (request_total, golden metrics).
+# External monitoring Prometheus only scrapes metrics-api :9995 — it does not carry proxy stats.
+# prometheusUrl: "http://prometheus.monitoring.svc.cluster.local:9090"

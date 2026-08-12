@@ -10,6 +10,9 @@
 #   ./deploy-np.sh --status     # list current NetworkPolicies in ecommerce namespace
 #   ./deploy-np.sh --help
 #
+# Skip apply (policies disabled on cluster):
+#   DISABLE_NP=1 ./deploy-np.sh --apply
+#
 
 set -euo pipefail
 
@@ -96,6 +99,10 @@ if [ "${DO_DELETE}" = true ]; then
 fi
 
 if [ "${DO_APPLY}" = true ]; then
+    if [ "${DISABLE_NP:-0}" = "1" ]; then
+        print_info "DISABLE_NP=1 — skipping NetworkPolicy apply (policies intentionally disabled)"
+        exit 0
+    fi
     print_info "Applying NetworkPolicies to namespace ${APP_NAMESPACE}..."
     kubectl apply -f "${SCRIPT_DIR}/"
     print_success "NetworkPolicies applied"

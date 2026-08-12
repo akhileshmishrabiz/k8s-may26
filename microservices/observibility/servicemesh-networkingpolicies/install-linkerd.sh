@@ -383,6 +383,8 @@ kubectl apply -f "${SCRIPT_DIR}/mesh/redis-skip-ports.yaml"
 kubectl apply -f "${SCRIPT_DIR}/mesh/server-authorization/meshed-auth.yaml"
 kubectl apply -f "${SCRIPT_DIR}/mesh/server-authorization/servers.yaml"
 kubectl apply -f "${SCRIPT_DIR}/mesh/server-authorization/authorization-policies.strict.yaml"
+kubectl apply -f "${SCRIPT_DIR}/mesh/server-authorization/allow-prometheus-network-scrape.yaml"
+kubectl apply -f "${SCRIPT_DIR}/mesh/retry-timeout/service-profiles.yaml"
 print_success "Mesh policies applied"
 
 # ============================================================
@@ -428,6 +430,7 @@ if [ "${SKIP_VIZ}" = false ]; then
     echo "  • Linkerd Viz (dashboard, tap, metrics-api)"
 fi
 echo "  • MeshTLSAuthentication + Server CRs + strict AuthorizationPolicy"
+echo "  • ServiceProfiles for retries (502/503/504) and 30s timeouts"
 echo "  • Namespace injection enabled on ${APP_NAMESPACE}"
 if [ "${SKIP_RESTART}" = false ]; then
     echo "  • Ecommerce workloads restarted for proxy injection"

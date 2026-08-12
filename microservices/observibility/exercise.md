@@ -19,7 +19,7 @@ cd microservices/observibility
 5. [Exercise 3 — E-Commerce App & Seed Data](#5-exercise-3--e-commerce-app--seed-data)
 6. [Exercise 4 — Generate Traffic for Dashboards](#6-exercise-4--generate-traffic-for-dashboards)
 7. [Exercise 5 — Network Policies (Cilium Enforcement + Hubble Drops)](#7-exercise-5--network-policies-cilium-enforcement--hubble-drops)
-8. [Exercise 6 — Linkerd Service Mesh + Viz](#8-exercise-6--linkerd-service-mesh--viz)
+8. [Exercise 6 — Linkerd Service Mesh + Viz](#8-exercise-6--linkerd-service-mesh--viz) · [**Dedicated lab →**](exercise-service-mesh.md)
 9. [Exercise 7 — k6 Load Testing](#9-exercise-7--k6-load-testing)
 10. [Exercise 8 — Chaos Testing Under Load](#10-exercise-8--chaos-testing-under-load)
 11. [Cleanup](#11-cleanup)
@@ -333,6 +333,15 @@ Populate metrics, logs, and traces before exploring Grafana dashboards.
 ./simulate-traffic.sh --duration 300 --rate 3
 ```
 
+**6.2b** High-throughput gateway load (~100 req/s aggregate, 60s default):
+
+```bash
+./simulate-100rps.sh
+./simulate-100rps.sh --duration 120 --rate 100
+```
+
+Uses k6 when available (`load-test/scenario-100rps.js`); falls back to a parallel curl loop. Unlike `load-test/run-load-test.sh --rps100` (100 req/s **per** microservice), this drives ~100 req/s **combined** through the API gateway so traffic fans out across all services.
+
 **6.3** While traffic runs, open Grafana dashboards (folder **E-Commerce**):
 
 | Dashboard | What to look for |
@@ -472,6 +481,15 @@ Watch Hubble in the first terminal.
 
 **Expected:** All policies removed; `deploy-np.sh --status` shows none.
 
+**Temporarily disable (skip re-apply on next deploy):**
+
+```bash
+export DISABLE_NP=1   # deploy-np.sh --apply and deploy.sh honor this
+./servicemesh-networkingpolicies/network-policies/deploy-np.sh --delete
+```
+
+Re-enable later: `unset DISABLE_NP` then `./servicemesh-networkingpolicies/network-policies/deploy-np.sh --apply`.
+
 ### Alternative: apply via mesh deploy script (includes Cilium check)
 
 The service mesh deploy script verifies Cilium before applying policies:
@@ -489,6 +507,8 @@ If Cilium is missing, it aborts with instructions to run `install-cilium.sh --wi
 ---
 
 ## 8. Exercise 6 — Linkerd Service Mesh + Viz
+
+> **Hands-on deep dive:** For a step-by-step service mesh deployment lab (CLI install, CNI plugin, control plane, injection, Server/AuthorizationPolicy, ServiceProfiles, troubleshooting), see **[exercise-service-mesh.md](exercise-service-mesh.md)**.
 
 Install Linkerd mTLS, service map, tap, and golden metrics on the existing cluster.
 
@@ -867,6 +887,39 @@ kubectl -n linkerd-viz port-forward svc/web 8084:8084 &
 
 **Verify:** `curl -sf http://localhost:9080/health`
 
+### Linkerd Viz RPC error (`metrics-api` / closed network connection)
+
+**Symptom:** Dashboard at the wrong URL (e.g. `http://localhost:4455/controlplane` from `linkerd dashboard`) or Viz at `:8084` shows:
+
+```text
+RPC error: connection to 10.96.x.x:8085 (metrics-api) — use of closed network connection
+```
+
+**Cause:** Two common issues on this lab cluster:
+
+1. **Wrong dashboard** — Linkerd Viz is **not** the control-plane UI. Use `http://localhost:8084` (Kind maps NodePort `30884`), not `linkerd dashboard` / `:4455/controlplane`.
+2. **NetworkPolicy blocks web → metrics-api** — `allow-linkerd-viz-scrape.yaml` selects `metrics-api` pods; once selected, only listed ingress is allowed. If `component: web` is missing, the Viz web pod cannot reach metrics-api on `:8085`.
+3. **Stale proxy certs** — After control-plane upgrades, older Viz proxies may log `CertificateExpired` talking to `linkerd-destination`; restart Viz deployments.
+
+**Fix:**
+
+```bash
+kubectl config use-context kind-ecommerce-vault
+
+# Re-apply NetworkPolicy (allows web → metrics-api:8085 + Prometheus → :9995)
+kubectl apply -f servicemesh-networkingpolicies/network-policies/allow-linkerd-viz-scrape.yaml
+
+# Refresh Viz proxy certificates
+kubectl rollout restart deployment -n linkerd-viz web metrics-api tap tap-injector prometheus
+kubectl rollout status deployment -n linkerd-viz --timeout=180s
+
+# Correct port-forward and URL
+kubectl -n linkerd-viz port-forward svc/web 8084:8084
+# Open http://localhost:8084
+```
+
+**Verify:** `curl -sf http://localhost:8084/api/version` and `curl -sf 'http://localhost:8084/api/tps-reports?resource_type=deployment&namespace=ecommerce'` return JSON (no RPC error in `kubectl logs -n linkerd-viz deploy/web -c web`).
+
 ### Linkerd injection failures after mesh install
 
 ```bash
@@ -915,14 +968,16 @@ kubectl get svc -n ecommerce
 
 ## Appendix — Script Reference
 
-| Script | Purpose |
-|--------|---------|
+| Script / doc | Purpose |
+|--------------|---------|
+| `exercise-service-mesh.md` | **Dedicated Linkerd deployment lab** (step-by-step + troubleshooting) |
 | `deploy.sh` | Full stack: Kind + Cilium + monitoring + app |
 | `servicemesh-networkingpolicies/cni/install-cilium.sh` | Cilium + Hubble only |
 | `servicemesh-networkingpolicies/install-linkerd.sh` | **Linkerd mesh + Viz + mesh policies** (`--skip-viz`, `--skip-restart`) |
 | `servicemesh-networkingpolicies/network-policies/deploy-np.sh` | NetworkPolicies only (`--apply`, `--delete`, `--status`) |
 | `servicemesh-networkingpolicies/deploy.sh` | Linkerd (via `install-linkerd.sh`) + NetworkPolicies |
 | `simulate-traffic.sh` | Realistic e-commerce traffic generator |
+| `simulate-100rps.sh` | ~100 req/s aggregate gateway load (k6 or curl fallback) |
 | `load-test/run-load-test.sh` | k6 load test runner |
 | `load-test/run-all-load-tests.sh` | Sequential profile runner |
 | `load-test/run-peak-chaos.sh` | High RPS + random pod kills |

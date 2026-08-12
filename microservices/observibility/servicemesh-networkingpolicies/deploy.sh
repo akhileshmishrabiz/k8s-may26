@@ -69,6 +69,11 @@ install_linkerd_mesh() {
 install_network_policies() {
     print_step "4" "Applying NetworkPolicies (ecommerce namespace)"
 
+    if [ "${DISABLE_NP:-0}" = "1" ]; then
+        print_info "DISABLE_NP=1 — skipping NetworkPolicy apply (policies intentionally disabled)"
+        return 0
+    fi
+
     if ! kubectl get namespace "${APP_NAMESPACE}" >/dev/null 2>&1; then
         print_error "Namespace '${APP_NAMESPACE}' not found — deploy the app stack first"
     fi
