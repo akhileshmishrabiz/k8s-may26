@@ -39,9 +39,10 @@ permissions:
   security-events: write
 
 env:
-  PATH: devsecops/src
+  CODE_PATH: devsecops/src
   APP_PORT: "8000"
-  DAST_TARGET: http://35.154.27.18:8000
+  # DAST_TARGET: http://35.154.27.18:8000
+  DAST_TARGET: http://localhost:8000
   DAST_USERNAME: livingdevops
   DAST_PASSWORD: LivingDevops1!
 
@@ -54,7 +55,7 @@ jobs:
 
       - name: Build and start application
         run: |
-          cd ${{ env.PATH }}
+          cd ${{ env.CODE_PATH }}
           docker build -t student-portal-dast .
           docker run -d --name student-portal-dast -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} -e DB_LINK=sqlite:////tmp/student_portal.db -e SECRET_KEY=dast-ci-secret-key -e ADMIN_PASSWORD=${{ env.DAST_PASSWORD }} student-portal-dast
 
@@ -102,7 +103,7 @@ jobs:
       - name: Build and start application
         if: contains(env.DAST_TARGET, 'localhost') || contains(env.DAST_TARGET, '127.0.0.1')
         run: |
-          cd ${{ env.PATH }}
+          cd ${{ env.CODE_PATH }}
           docker build -t student-portal-dast .
           docker run -d --name student-portal-dast \
             -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} \
