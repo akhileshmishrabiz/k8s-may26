@@ -1,0 +1,178 @@
+name: DevSecOps - DAST
+
+on:
+  # pull_request:
+  #   branches: [main]
+  #   paths:
+  #     - "src/**"
+  #     - "devsecops/zap/**"
+  #     - ".zap/**"
+  #     - ".github/workflows/devsecops-dast.yaml"
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "src/**"
+  #     - "devsecops/zap/**"
+  #     - ".zap/**"
+  #     - ".github/workflows/devsecops-dast.yaml"
+  # schedule:
+  #   - cron: "0 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: "Scan type"
+        required: true
+        default: baseline
+        type: choice
+        options:
+          - baseline
+          - authenticated
+          - both
+
+concurrency:
+  group: devsecops-dast-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+env:
+  PATH: devsecops/src
+  APP_PORT: "8000"
+  DAST_TARGET: http://35.154.27.18:8000
+  DAST_USERNAME: livingdevops
+  DAST_PASSWORD: LivingDevops1!
+
+jobs:
+  dast-baseline:
+    name: DAST Baseline (unauthenticated)
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      contains(fromJSON('["baseline", "both"]'), github.event.inputs.scan_type)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start application
+        run: |
+          cd ${{ env.PATH }}
+          docker build -t student-portal-dast .
+          docker run -d --name student-portal-dast -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} -e DB_LINK=sqlite:////tmp/student_portal.db -e SECRET_KEY=dast-ci-secret-key -e ADMIN_PASSWORD=${{ env.DAST_PASSWORD }} student-portal-dast
+
+      - name: Wait for application health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${{ env.APP_PORT }}/health"; then
+              echo "Application is healthy"
+              exit 0
+            fi
+            echo "Waiting for app... ($i/30)"
+            sleep 3
+          done
+          docker logs student-portal-dast
+          exit 1
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ env.DAST_TARGET }}
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -a -I
+          allow_issue_writing: true
+          issue_title: "DAST Baseline — ${{ github.event.pull_request.number || github.ref_name }}"
+
+      - name: Upload ZAP baseline report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-baseline-report
+          path: report_html.html
+          retention-days: 14
+
+      - name: Stop application container
+        if: always()
+        run: docker rm -f student-portal-dast || true
+
+  dast-authenticated:
+    name: DAST Authenticated (spider + active scan)
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' &&
+       contains(fromJSON('["authenticated", "both"]'), github.event.inputs.scan_type))
+    steps:
+      - uses: actions/checkout@v4
+
+      # Only start a local container when scanning localhost (skip for remote EC2 URL)
+      - name: Build and start application
+        if: contains(env.DAST_TARGET, 'localhost') || contains(env.DAST_TARGET, '127.0.0.1')
+        run: |
+          cd ${{ env.PATH }}
+          docker build -t student-portal-dast .
+          docker run -d --name student-portal-dast \
+            -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} \
+            -e DB_LINK=sqlite:////tmp/student_portal.db \
+            -e SECRET_KEY=dast-ci-secret-key \
+            -e ADMIN_PASSWORD=${{ env.DAST_PASSWORD }} \
+            student-portal-dast
+
+      - name: Wait for application health
+        if: contains(env.DAST_TARGET, 'localhost') || contains(env.DAST_TARGET, '127.0.0.1')
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${{ env.APP_PORT }}/health"; then
+              echo "Application is healthy"
+              exit 0
+            fi
+            echo "Waiting for app... ($i/30)"
+            sleep 3
+          done
+          docker logs student-portal-dast
+          exit 1
+
+      - name: Verify DAST target is reachable
+        run: |
+          curl -sf "${{ env.DAST_TARGET }}/health" || {
+            echo "::error::Cannot reach DAST target at ${{ env.DAST_TARGET }}"
+            exit 1
+          }
+          echo "DAST target is reachable."
+
+      - name: OWASP ZAP Authenticated Scan
+        uses: zaproxy/action-af@v0.3.0
+        env:
+          DAST_TARGET: ${{ env.DAST_TARGET }}
+          DAST_USERNAME: ${{ env.DAST_USERNAME }}
+          DAST_PASSWORD: ${{ env.DAST_PASSWORD }}
+        with:
+          plan: .github/workflows/zap/plan.yml
+          docker_env_vars: |
+            DAST_TARGET
+            DAST_USERNAME
+            DAST_PASSWORD
+
+      - name: Upload ZAP authenticated reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-authenticated-report
+          path: |
+            zap-auth-report.html
+            zap-auth-report.sarif
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload ZAP SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: zap-auth-report.sarif
+          category: zap-dast
+        continue-on-error: true
+
+      - name: Stop application container
+        if: always() && (contains(env.DAST_TARGET, 'localhost') || contains(env.DAST_TARGET, '127.0.0.1'))
+        run: docker rm -f student-portal-dast || true
