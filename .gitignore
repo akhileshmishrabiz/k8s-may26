@@ -242,6 +242,9 @@ build/
 # Keep .env.example tracked; .env is ignored above
 !.env.example
 
+# SonarQube scanner working dir
+.scannerwork/
+
 .terraform/
 .terraform.lock.hcl
 terraform.tfstate

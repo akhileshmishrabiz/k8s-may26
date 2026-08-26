@@ -1,0 +1,64 @@
+name: DevSecOps SonarQube
+# Scan the Flask portal (devsecops/src) against the self-hosted SonarQube on EC2.
+# Secrets: SONAR_TOKEN, SONAR_HOST_URL (http://<ec2-public-ip>:9000)
+
+on:
+  # pull_request:
+  #   paths:
+  #     - 'devsecops/src/**'
+  #     - '.github/workflows/devsecops-sonarqube.yaml'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'devsecops/src/**'
+  #     - '.github/workflows/devsecops-sonarqube.yaml'
+
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.13'
+  CODE_PATH: devsecops/src
+
+jobs:
+  sonarqube:
+    runs-on: ubuntu-latest
+    steps:
+      # full history so Sonar can compute new-code / blame
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # coverage.xml is what sonar-project.properties points at
+      - name: Unit tests with coverage
+        env:
+          DB_LINK: "sqlite:///:memory:"
+        working-directory: ${{ env.CODE_PATH }}
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pytest --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: ${{ env.CODE_PATH }}
+
+      # fails the job if the project quality gate is ERROR
+      - name: SonarQube quality gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 10
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scanMetadataReportFile: ${{ env.CODE_PATH }}/.scannerwork/report-task.txt

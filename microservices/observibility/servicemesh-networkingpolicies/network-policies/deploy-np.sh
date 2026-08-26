@@ -16,6 +16,9 @@
 
 set -euo pipefail
 
+# Policies disabled by default — set DISABLE_NP=0 to re-enable apply.
+export DISABLE_NP="${DISABLE_NP:-1}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLUSTER_NAME="ecommerce-vault"
 APP_NAMESPACE="ecommerce"

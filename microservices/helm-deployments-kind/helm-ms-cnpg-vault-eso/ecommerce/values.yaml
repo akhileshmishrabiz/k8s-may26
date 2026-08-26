@@ -84,12 +84,13 @@ cnpg:
 # Service configurations
 # Note: All secrets (JWT, Razorpay) are managed via Vault.
 # notification-service uses an in-cluster Mailpit SMTP sink (no AWS/SES creds).
+# Simplified stack: 1 replica per service (no mesh / no network policies).
 services:
   productService:
     enabled: true
     image: product-service:local
     port: 8001
-    replicas: 2
+    replicas: 1
     env: production
     logLevel: info
     resources:
@@ -104,7 +105,7 @@ services:
     enabled: true
     image: user-service:local
     port: 8002
-    replicas: 2
+    replicas: 1
     env: production
     jwtExpiry: "24h"
     logLevel: info
@@ -120,7 +121,7 @@ services:
     enabled: true
     image: cart-service:local
     port: 8003
-    replicas: 2
+    replicas: 1
     env: production
     logLevel: info
     resources:
@@ -135,7 +136,7 @@ services:
     enabled: true
     image: order-service:local
     port: 8004
-    replicas: 2
+    replicas: 1
     env: production
     logLevel: info
     resources:
@@ -150,7 +151,7 @@ services:
     enabled: true
     image: payment-service:local
     port: 8005
-    replicas: 2
+    replicas: 1
     env: development
     logLevel: INFO
     resources:
@@ -165,7 +166,7 @@ services:
     enabled: true
     image: notification-service:local
     port: 8006
-    replicas: 2
+    replicas: 1
     env: development
     logLevel: INFO
     smtp:
@@ -190,7 +191,7 @@ services:
 apiGateway:
   enabled: true
   image: nginx:alpine
-  replicas: 2
+  replicas: 1
   nodePort: 30080
   resources:
     requests:
@@ -204,7 +205,7 @@ apiGateway:
 frontend:
   enabled: true
   image: frontend:local
-  replicas: 2
+  replicas: 1
   nodePort: 30000
   resources:
     requests:

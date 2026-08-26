@@ -85,6 +85,7 @@
   "templating": {
     "list": [
       {
+        "allValue": ".*",
         "current": { "selected": true, "text": "All", "value": "$__all" },
         "datasource": { "type": "loki", "uid": "loki" },
         "definition": "label_values({namespace=\"ecommerce\"}, app)",

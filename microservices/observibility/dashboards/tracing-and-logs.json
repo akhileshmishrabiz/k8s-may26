@@ -50,10 +50,10 @@
         "wrapLogMessage": true
       },
       "targets": [{
-        "expr": "{namespace=\"ecommerce\", app=~\"$service\"} | json | level=~\"(?i)error|warn|fatal\"",
+        "expr": "{namespace=\"ecommerce\", app=~\"$service\"} | json | level=~\"(?i)$log_level\"",
         "refId": "A"
       }],
-      "title": "Logs for Selected Service (JSON parsed)",
+      "title": "Logs for Selected Service",
       "type": "logs"
     }
   ],
@@ -64,6 +64,7 @@
   "templating": {
     "list": [
       {
+        "allValue": ".*",
         "current": { "selected": true, "text": "All", "value": "$__all" },
         "includeAll": true,
         "label": "Service",
@@ -75,9 +76,22 @@
           { "selected": false, "text": "order-service", "value": "order-service" },
           { "selected": false, "text": "user-service", "value": "user-service" },
           { "selected": false, "text": "cart-service", "value": "cart-service" },
-          { "selected": false, "text": "payment-service", "value": "payment-service" }
+          { "selected": false, "text": "payment-service", "value": "payment-service" },
+          { "selected": false, "text": "notification-service", "value": "notification-service" }
         ],
-        "query": "product-service,order-service,user-service,cart-service,payment-service",
+        "query": "product-service,order-service,user-service,cart-service,payment-service,notification-service",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": ".*", "value": ".*" },
+        "label": "Log Level",
+        "name": "log_level",
+        "options": [
+          { "selected": true, "text": "All", "value": ".*" },
+          { "selected": false, "text": "error|warn|fatal", "value": "error|warn|fatal" },
+          { "selected": false, "text": "info", "value": "info" }
+        ],
+        "query": ".*,error|warn|fatal,info",
         "type": "custom"
       },
       {
