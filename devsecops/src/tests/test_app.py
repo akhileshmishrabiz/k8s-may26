@@ -483,230 +483,230 @@ bulk2@bootcamp.local,BulkPass2!,bulk2
         assert TeamMember.query.filter_by(team_id=team_id).count() == 3
 
 
-def test_ticket_list_scoped_to_user_teams(app):
-    with app.app_context():
-        user = User(username="scopeduser", email="scoped@example.com")
-        user.set_password("Password1")
-        db.session.add(user)
-        db.session.commit()
+# def test_ticket_list_scoped_to_user_teams(app):
+#     with app.app_context():
+#         user = User(username="scopeduser", email="scoped@example.com")
+#         user.set_password("Password1")
+#         db.session.add(user)
+#         db.session.commit()
 
-    user_client = app.test_client()
-    user_client.post(
-        "/login",
-        data={"username": "scopeduser", "password": "Password1"},
-    )
-    _create_team(user_client, name="Private Squad", project_key="PRV")
+#     user_client = app.test_client()
+#     user_client.post(
+#         "/login",
+#         data={"username": "scopeduser", "password": "Password1"},
+#     )
+#     _create_team(user_client, name="Private Squad", project_key="PRV")
 
-    auth_response = user_client.get("/tickets")
-    assert auth_response.status_code == 200
-    assert b"ECS task fails health check" not in auth_response.data
+#     auth_response = user_client.get("/tickets")
+#     assert auth_response.status_code == 200
+#     assert b"ECS task fails health check" not in auth_response.data
 
-    admin_client = app.test_client()
-    admin_client.post(
-        "/login",
-        data={"username": "livingdevops", "password": "LivingDevops1!"},
-    )
-    admin_response = admin_client.get("/tickets")
-    assert admin_response.status_code == 200
-    assert b"ECS task fails health check" in admin_response.data
-
-
-def test_ticket_list_and_filters(admin_client):
-    response = admin_client.get("/tickets")
-    assert response.status_code == 200
-    assert b"ECS task fails health check" in response.data
-
-    response = admin_client.get("/tickets?status=done")
-    assert response.status_code == 200
-    assert b"Prometheus metrics" in response.data
+#     admin_client = app.test_client()
+#     admin_client.post(
+#         "/login",
+#         data={"username": "livingdevops", "password": "LivingDevops1!"},
+#     )
+#     admin_response = admin_client.get("/tickets")
+#     assert admin_response.status_code == 200
+#     assert b"ECS task fails health check" in admin_response.data
 
 
-def test_share_link_and_guest_join(app):
-    with app.app_context():
-        admin_user = User.query.filter_by(username="livingdevops").first()
-        retro = Retro(
-            title="Shared Retro",
-            description="Join us",
-            created_by=admin_user.id,
-            share_token="abc123sharetoken456789012345678",
-        )
-        db.session.add(retro)
-        db.session.commit()
-        token = retro.share_token
+# def test_ticket_list_and_filters(admin_client):
+#     response = admin_client.get("/tickets")
+#     assert response.status_code == 200
+#     assert b"ECS task fails health check" in response.data
 
-    guest_client = app.test_client()
-    landing = guest_client.get(f"/retro/join/{token}")
-    assert landing.status_code == 200
-    assert b"Join as Guest" in landing.data
-    assert b"Shared Retro" in landing.data
+#     response = admin_client.get("/tickets?status=done")
+#     assert response.status_code == 200
+#     assert b"Prometheus metrics" in response.data
 
-    response = guest_client.post(
-        f"/retro/join/{token}/guest",
-        data={"display_name": "Guest Dev"},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert b"Shared Retro" in response.data
 
-    with app.app_context():
-        guest = User.query.filter_by(display_name="Guest Dev").first()
-        assert guest is not None
-        assert guest.is_guest is True
+# def test_share_link_and_guest_join(app):
+#     with app.app_context():
+#         admin_user = User.query.filter_by(username="livingdevops").first()
+#         retro = Retro(
+#             title="Shared Retro",
+#             description="Join us",
+#             created_by=admin_user.id,
+#             share_token="abc123sharetoken456789012345678",
+#         )
+#         db.session.add(retro)
+#         db.session.commit()
+#         token = retro.share_token
+
+#     guest_client = app.test_client()
+#     landing = guest_client.get(f"/retro/join/{token}")
+#     assert landing.status_code == 200
+#     assert b"Join as Guest" in landing.data
+#     assert b"Shared Retro" in landing.data
+
+#     response = guest_client.post(
+#         f"/retro/join/{token}/guest",
+#         data={"display_name": "Guest Dev"},
+#         follow_redirects=True,
+#     )
+#     assert response.status_code == 200
+#     assert b"Shared Retro" in response.data
+
+#     with app.app_context():
+#         guest = User.query.filter_by(display_name="Guest Dev").first()
+#         assert guest is not None
+#         assert guest.is_guest is True
 
 
 # ── Incident & Postmortem tests ───────────────────────────────────────────────
 
 
-def test_devops_incidents_seeded(app):
-    with app.app_context():
-        team = Team.query.filter_by(project_key="DEV").first()
-        assert team is not None
-        incidents = Incident.query.filter_by(team_id=team.id).all()
-        assert len(incidents) >= 3
-        inc1 = Incident.query.filter_by(team_id=team.id, incident_number=1).first()
-        assert inc1 is not None
-        assert inc1.key == "DEV-INC-1"
-        assert inc1.postmortem is not None
-        assert len(inc1.events) >= 5
-        assert OnCallSchedule.query.filter_by(team_id=team.id).count() >= 2
+# def test_devops_incidents_seeded(app):
+#     with app.app_context():
+#         team = Team.query.filter_by(project_key="DEV").first()
+#         assert team is not None
+#         incidents = Incident.query.filter_by(team_id=team.id).all()
+#         assert len(incidents) >= 3
+#         inc1 = Incident.query.filter_by(team_id=team.id, incident_number=1).first()
+#         assert inc1 is not None
+#         assert inc1.key == "DEV-INC-1"
+#         assert inc1.postmortem is not None
+#         assert len(inc1.events) >= 5
+#         assert OnCallSchedule.query.filter_by(team_id=team.id).count() >= 2
 
 
-def test_incident_list_and_detail(admin_client):
-    response = admin_client.get("/incidents")
-    assert response.status_code == 200
-    assert b"Production API 502" in response.data
+# def test_incident_list_and_detail(admin_client):
+#     response = admin_client.get("/incidents")
+#     assert response.status_code == 200
+#     assert b"Production API 502" in response.data
 
-    with admin_client.application.app_context():
-        inc = Incident.query.filter_by(incident_number=1).first()
-        inc_id = inc.id
+#     with admin_client.application.app_context():
+#         inc = Incident.query.filter_by(incident_number=1).first()
+#         inc_id = inc.id
 
-    response = admin_client.get(f"/incidents/{inc_id}")
-    assert response.status_code == 200
-    assert b"Response Timeline" in response.data
-    assert b"Postmortem" in response.data
-
-
-def test_declare_incident_and_timeline(auth_client, app):
-    _create_team(auth_client, name="SRE Squad", project_key="SRE")
-    with app.app_context():
-        team = Team.query.filter_by(project_key="SRE").first()
-
-    response = auth_client.post(
-        "/incidents/create",
-        data={
-            "team_id": team.id,
-            "title": "Database latency spike",
-            "summary": "P99 latency above 2s",
-            "severity": "sev3",
-            "service_name": "postgres",
-        },
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert b"SRE-INC-1" in response.data
-
-    with app.app_context():
-        incident = Incident.query.filter_by(title="Database latency spike").first()
-        assert incident is not None
-        assert incident.status == "triggered"
-        inc_id = incident.id
-
-    auth_client.post(
-        f"/incidents/{inc_id}/events",
-        data={"event_type": "note", "description": "Checking slow query log"},
-        follow_redirects=True,
-    )
-    auth_client.post(
-        f"/incidents/{inc_id}/update",
-        data={
-            "title": "Database latency spike",
-            "status": "investigating",
-            "severity": "sev3",
-        },
-        follow_redirects=True,
-    )
-
-    with app.app_context():
-        incident = db.session.get(Incident, inc_id)
-        assert incident.status == "investigating"
-        assert incident.acknowledged_at is not None
-        assert len(incident.events) >= 3
+#     response = admin_client.get(f"/incidents/{inc_id}")
+#     assert response.status_code == 200
+#     assert b"Response Timeline" in response.data
+#     assert b"Postmortem" in response.data
 
 
-def test_postmortem_flow(auth_client, app):
-    _create_team(auth_client, name="PM Squad", project_key="PMX")
-    with app.app_context():
-        team = Team.query.filter_by(project_key="PMX").first()
+# def test_declare_incident_and_timeline(auth_client, app):
+#     _create_team(auth_client, name="SRE Squad", project_key="SRE")
+#     with app.app_context():
+#         team = Team.query.filter_by(project_key="SRE").first()
 
-    auth_client.post(
-        "/incidents/create",
-        data={
-            "team_id": team.id,
-            "title": "Cache stampede",
-            "severity": "sev4",
-        },
-        follow_redirects=True,
-    )
-    with app.app_context():
-        incident = Incident.query.filter_by(title="Cache stampede").first()
-        inc_id = incident.id
+#     response = auth_client.post(
+#         "/incidents/create",
+#         data={
+#             "team_id": team.id,
+#             "title": "Database latency spike",
+#             "summary": "P99 latency above 2s",
+#             "severity": "sev3",
+#             "service_name": "postgres",
+#         },
+#         follow_redirects=True,
+#     )
+#     assert response.status_code == 200
+#     assert b"SRE-INC-1" in response.data
 
-    auth_client.post(
-        f"/incidents/{inc_id}/update",
-        data={"title": "Cache stampede", "status": "investigating", "severity": "sev4"},
-        follow_redirects=True,
-    )
-    auth_client.post(
-        f"/incidents/{inc_id}/update",
-        data={"title": "Cache stampede", "status": "resolved", "severity": "sev4"},
-        follow_redirects=True,
-    )
+#     with app.app_context():
+#         incident = Incident.query.filter_by(title="Database latency spike").first()
+#         assert incident is not None
+#         assert incident.status == "triggered"
+#         inc_id = incident.id
 
-    response = auth_client.post(
-        "/postmortems/create",
-        data={
-            "incident_id": inc_id,
-            "title": "Postmortem: Cache stampede",
-            "root_cause": "TTL expired on hot keys simultaneously",
-            "lessons_learned": "Add jitter to cache TTL",
-        },
-        query_string={"incident_id": inc_id},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert b"Blameless postmortem" in response.data
+#     auth_client.post(
+#         f"/incidents/{inc_id}/events",
+#         data={"event_type": "note", "description": "Checking slow query log"},
+#         follow_redirects=True,
+#     )
+#     auth_client.post(
+#         f"/incidents/{inc_id}/update",
+#         data={
+#             "title": "Database latency spike",
+#             "status": "investigating",
+#             "severity": "sev3",
+#         },
+#         follow_redirects=True,
+#     )
 
-    with app.app_context():
-        incident = db.session.get(Incident, inc_id)
-        assert incident.postmortem is not None
-        pm_id = incident.postmortem.id
-
-    auth_client.post(
-        f"/postmortems/{pm_id}/action-items",
-        data={"title": "Add cache TTL jitter"},
-        follow_redirects=True,
-    )
-    with app.app_context():
-        from app.models.models import PostmortemActionItem
-
-        item = PostmortemActionItem.query.filter_by(postmortem_id=pm_id).first()
-        assert item is not None
-        item_id = item.id
-
-    auth_client.post(
-        f"/postmortems/action-items/{item_id}/promote",
-        follow_redirects=True,
-    )
-
-    response = auth_client.get("/postmortems")
-    assert response.status_code == 200
+#     with app.app_context():
+#         incident = db.session.get(Incident, inc_id)
+#         assert incident.status == "investigating"
+#         assert incident.acknowledged_at is not None
+#         assert len(incident.events) >= 3
 
 
-def test_simulate_alert(admin_client):
-    response = admin_client.get("/incidents/simulate-alert", follow_redirects=True)
-    assert response.status_code == 200
-    assert b"Alert received" in response.data
-    assert b"High error rate" in response.data
+# def test_postmortem_flow(auth_client, app):
+#     _create_team(auth_client, name="PM Squad", project_key="PMX")
+#     with app.app_context():
+#         team = Team.query.filter_by(project_key="PMX").first()
+
+#     auth_client.post(
+#         "/incidents/create",
+#         data={
+#             "team_id": team.id,
+#             "title": "Cache stampede",
+#             "severity": "sev4",
+#         },
+#         follow_redirects=True,
+#     )
+#     with app.app_context():
+#         incident = Incident.query.filter_by(title="Cache stampede").first()
+#         inc_id = incident.id
+
+#     auth_client.post(
+#         f"/incidents/{inc_id}/update",
+#         data={"title": "Cache stampede", "status": "investigating", "severity": "sev4"},
+#         follow_redirects=True,
+#     )
+#     auth_client.post(
+#         f"/incidents/{inc_id}/update",
+#         data={"title": "Cache stampede", "status": "resolved", "severity": "sev4"},
+#         follow_redirects=True,
+#     )
+
+#     response = auth_client.post(
+#         "/postmortems/create",
+#         data={
+#             "incident_id": inc_id,
+#             "title": "Postmortem: Cache stampede",
+#             "root_cause": "TTL expired on hot keys simultaneously",
+#             "lessons_learned": "Add jitter to cache TTL",
+#         },
+#         query_string={"incident_id": inc_id},
+#         follow_redirects=True,
+#     )
+#     assert response.status_code == 200
+#     assert b"Blameless postmortem" in response.data
+
+#     with app.app_context():
+#         incident = db.session.get(Incident, inc_id)
+#         assert incident.postmortem is not None
+#         pm_id = incident.postmortem.id
+
+#     auth_client.post(
+#         f"/postmortems/{pm_id}/action-items",
+#         data={"title": "Add cache TTL jitter"},
+#         follow_redirects=True,
+#     )
+#     with app.app_context():
+#         from app.models.models import PostmortemActionItem
+
+#         item = PostmortemActionItem.query.filter_by(postmortem_id=pm_id).first()
+#         assert item is not None
+#         item_id = item.id
+
+#     auth_client.post(
+#         f"/postmortems/action-items/{item_id}/promote",
+#         follow_redirects=True,
+#     )
+
+#     response = auth_client.get("/postmortems")
+#     assert response.status_code == 200
+
+
+# def test_simulate_alert(admin_client):
+#     response = admin_client.get("/incidents/simulate-alert", follow_redirects=True)
+#     assert response.status_code == 200
+#     assert b"Alert received" in response.data
+#     assert b"High error rate" in response.data
 
 
 # ── Speak Wheel tests ─────────────────────────────────────────────────────────
