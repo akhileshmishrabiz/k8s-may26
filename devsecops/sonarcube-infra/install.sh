@@ -16,7 +16,7 @@ OS_LIKE="$(. /etc/os-release && echo "${ID_LIKE:-}")"
 echo "==> Detected OS: ${OS_ID}"
 
 install_docker_amazon() {
-  dnf install -y docker curl unzip
+  dnf install -y docker curl unzip --skip-broken
   # Compose plugin: Amazon Linux 2023 ships it as a separate package when available.
   if dnf list --available docker-compose-plugin >/dev/null 2>&1; then
     dnf install -y docker-compose-plugin

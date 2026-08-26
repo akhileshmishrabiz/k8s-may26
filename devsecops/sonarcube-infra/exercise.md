@@ -176,20 +176,23 @@ Workflow file (repo root):
 
 It:
 
-1. checks out the repo (`fetch-depth: 0` so blame / new-code works)
-2. installs Python 3.13 and `devsecops/src` deps
-3. runs `pytest --cov=app --cov-report=xml`
-4. runs `SonarSource/sonarqube-scan-action` against `devsecops/src`
-5. waits on the quality gate
+1. fails fast if `SONAR_TOKEN` / `SONAR_HOST_URL` are missing, and curls `/api/system/status`
+2. checks out the repo (`fetch-depth: 0` so blame / new-code works)
+3. installs Python 3.13 and `devsecops/src` deps
+4. runs `pytest --cov=app --cov-report=xml`
+5. runs `SonarSource/sonarqube-scan-action` against `devsecops/src`
+6. waits on the quality gate
 
-### Repo secrets (Settings → Secrets and variables → Actions)
+### GitHub settings (Settings → Secrets and variables → Actions)
 
-| Secret | Example | Notes |
-|--------|---------|--------|
-| `SONAR_TOKEN` | `squ_...` | the token from section 1 |
-| `SONAR_HOST_URL` | `http://3.110.x.x:9000` | no trailing slash; must be reachable from `ubuntu-latest` |
+| Kind | Name | Example | Notes |
+|------|------|---------|--------|
+| **Secret** | `SONAR_TOKEN` | `squ_...` | token from section 1 |
+| **Variable** (preferred) | `SONAR_HOST_URL` | `http://3.110.x.x:9000` | no trailing slash; a secret with the same name also works |
 
 GitHub-hosted runners are on the public internet. Your EC2 security group must allow **inbound TCP 9000** from `0.0.0.0/0` for this lab (or from GitHub’s IP ranges if you want to lock it down).
+
+The job will fail immediately if either value is missing or if it cannot reach SonarQube — fix that before looking at pytest or the scanner.
 
 HTTP is fine for a short-lived lab. Do not put a real production token on a plaintext `http://` host.
 

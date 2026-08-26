@@ -1,6 +1,15 @@
 name: DevSecOps SonarQube
-# Scan the Flask portal (devsecops/src) against the self-hosted SonarQube on EC2.
-# Secrets: SONAR_TOKEN, SONAR_HOST_URL (http://<ec2-public-ip>:9000)
+# Scan the Flask portal (devsecops/src) against self-hosted SonarQube on EC2.
+#
+# Before Run workflow, set these in the repo:
+#   Settings → Secrets and variables → Actions
+#     Secret   SONAR_TOKEN      = analysis token from SonarQube (My Account → Security)
+#     Variable SONAR_HOST_URL   = http://<ec2-public-ip>:9000   (no trailing slash)
+#   You can also store SONAR_HOST_URL as a secret; the job accepts either.
+#
+# Also required on the EC2 box:
+#   - SonarQube UP at that URL (security group TCP 9000 open to the internet for this lab)
+#   - Project key student-portal created (matches sonar-project.properties)
 
 on:
   # pull_request:
@@ -19,12 +28,42 @@ on:
 env:
   PYTHON_VERSION: '3.13'
   CODE_PATH: devsecops/src
+  SONAR_PROJECT_KEY: student-portal
+
+permissions:
+  contents: read
 
 jobs:
   sonarqube:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # Official docs store the URL as a variable; secret still works.
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
+
     steps:
-      # full history so Sonar can compute new-code / blame
+      - name: Check SonarQube credentials
+        run: |
+          if [ -z "${SONAR_TOKEN}" ]; then
+            echo "::error::Missing secret SONAR_TOKEN. In SonarQube: My Account → Security → generate an analysis token. In GitHub: Settings → Secrets and variables → Actions → New repository secret."
+            exit 1
+          fi
+          if [ -z "${SONAR_HOST_URL}" ]; then
+            echo "::error::Missing SONAR_HOST_URL. Add a repository variable (or secret) named SONAR_HOST_URL with value http://<ec2-public-ip>:9000 (no trailing slash)."
+            exit 1
+          fi
+          # scanners reject a trailing slash
+          CLEAN_URL="${SONAR_HOST_URL%/}"
+          echo "SONAR_HOST_URL=${CLEAN_URL}" >> "${GITHUB_ENV}"
+          echo "Using SONAR_HOST_URL=${CLEAN_URL}"
+          echo "Checking SonarQube is reachable..."
+          if ! curl -fsS --max-time 15 "${CLEAN_URL}/api/system/status"; then
+            echo "::error::Cannot reach ${CLEAN_URL}. Confirm SonarQube is UP and EC2 security group allows inbound TCP 9000 from the internet (GitHub-hosted runners)."
+            exit 1
+          fi
+          echo
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -35,7 +74,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # coverage.xml is what sonar-project.properties points at
       - name: Unit tests with coverage
         env:
           DB_LINK: "sqlite:///:memory:"
@@ -45,20 +83,26 @@ jobs:
           source .venv/bin/activate
           pip install -r requirements.txt
           pytest --cov=app --cov-report=xml --cov-report=term-missing
+          test -f coverage.xml
 
       - name: SonarQube scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
         with:
           projectBaseDir: ${{ env.CODE_PATH }}
+          args: >
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.python.coverage.reportPaths=coverage.xml
 
-      # fails the job if the project quality gate is ERROR
       - name: SonarQube quality gate
+        id: quality-gate
         uses: SonarSource/sonarqube-quality-gate-action@v1
         timeout-minutes: 10
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
         with:
           scanMetadataReportFile: ${{ env.CODE_PATH }}/.scannerwork/report-task.txt
+          pollingTimeoutSec: 600
