@@ -1,0 +1,228 @@
+# ZAP Automation Framework plan — authenticated DAST for LivingDevOps portal.
+# Used by .github/workflows/dast-devsecops.yaml (zaproxy/action-af).
+#
+# Env vars passed into the ZAP container:
+#   DAST_TARGET    e.g. http://localhost:8000
+#   DAST_USERNAME  e.g. livingdevops
+#   DAST_PASSWORD  e.g. LivingDevops1!
+#
+# Reports are written to /zap/wrk/ which is the GitHub workspace:
+#   zap-auth-report.html
+#   zap-auth-report.sarif
+
+env:
+  contexts:
+    - name: student-portal
+      urls:
+        - ${DAST_TARGET}
+      includePaths:
+        - ${DAST_TARGET}.*
+      excludePaths:
+        - ${DAST_TARGET}/logout.*
+        - ${DAST_TARGET}/metrics.*
+        - ${DAST_TARGET}/register.*
+        - ${DAST_TARGET}/static/.*
+      authentication:
+        method: form
+        parameters:
+          loginPageUrl: ${DAST_TARGET}/login
+          loginRequestUrl: ${DAST_TARGET}/login
+          loginRequestBody: username={%username%}&password={%password%}
+        verification:
+          method: poll
+          loggedInRegex: Logout
+          loggedOutRegex: Welcome back
+          pollFrequency: 60
+          pollUnits: requests
+          pollUrl: ${DAST_TARGET}/
+          pollPostData: ""
+      sessionManagement:
+        method: cookie
+      technology:
+        include:
+          - Python
+          - Flask
+          - Sqlite
+      users:
+        - name: admin
+          credentials:
+            username: ${DAST_USERNAME}
+            password: ${DAST_PASSWORD}
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+  vars:
+    target: ${DAST_TARGET}
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+      maxBodySizeInBytesToScan: 1000000
+
+  - type: requestor
+    parameters:
+      user: admin
+    requests:
+      - url: ${DAST_TARGET}/
+        name: dashboard
+        method: GET
+      - url: ${DAST_TARGET}/students
+        name: students
+        method: GET
+      - url: ${DAST_TARGET}/tickets
+        name: tickets
+        method: GET
+      - url: ${DAST_TARGET}/teams
+        name: teams
+        method: GET
+      - url: ${DAST_TARGET}/retro
+        name: retros
+        method: GET
+      - url: ${DAST_TARGET}/incidents
+        name: incidents
+        method: GET
+      - url: ${DAST_TARGET}/postmortems
+        name: postmortems
+        method: GET
+      - url: ${DAST_TARGET}/games
+        name: games
+        method: GET
+      - url: ${DAST_TARGET}/wheel
+        name: wheel
+        method: GET
+      - url: ${DAST_TARGET}/assignments
+        name: assignments
+        method: GET
+      - url: ${DAST_TARGET}/announcements
+        name: announcements
+        method: GET
+      - url: ${DAST_TARGET}/classes
+        name: classes
+        method: GET
+
+  - type: spider
+    parameters:
+      context: student-portal
+      user: admin
+      url: ${DAST_TARGET}
+      maxDuration: 5
+      maxDepth: 8
+      maxChildren: 20
+      acceptCookies: true
+      handleODataParametersVisited: false
+      handleParameters: USE_ALL
+      parseComments: false
+      parseGit: false
+      parseRobotsTxt: true
+      parseSitemapXml: true
+      parseSVNEntries: false
+      postForm: true
+      processForm: true
+      sendRefererHeader: true
+      threadCount: 2
+      userAgent: ZAP-DAST-CI
+
+  - type: spiderAjax
+    parameters:
+      context: student-portal
+      user: admin
+      url: ${DAST_TARGET}
+      maxDuration: 5
+      maxCrawlDepth: 5
+      maxCrawlStates: 20
+      numberOfBrowsers: 1
+      inScopeOnly: true
+      browserId: firefox-headless
+      clickDefaultElems: true
+      clickElemsOnce: true
+      eventWait: 1000
+      reloadWait: 1000
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  - type: activeScan
+    parameters:
+      context: student-portal
+      user: admin
+      maxRuleDurationInMins: 2
+      maxScanDurationInMins: 10
+      threadPerHost: 2
+      delayInMs: 0
+      addQueryParam: false
+
+  - type: alertFilter
+    parameters:
+      deleteGlobalAlerts: false
+    alertFilters:
+      - ruleId: 10015
+        newRisk: False Positive
+        context: student-portal
+      - ruleId: 10020
+        newRisk: Info
+        context: student-portal
+      - ruleId: 10021
+        newRisk: Info
+        context: student-portal
+      - ruleId: 10035
+        newRisk: Info
+        context: student-portal
+      - ruleId: 10036
+        newRisk: Info
+        context: student-portal
+      - ruleId: 10038
+        newRisk: Info
+        context: student-portal
+      - ruleId: 10055
+        newRisk: Info
+        context: student-portal
+      - ruleId: 10096
+        newRisk: Info
+        context: student-portal
+      - ruleId: 10109
+        newRisk: Info
+        context: student-portal
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/
+      reportFile: zap-auth-report
+      reportTitle: Student Portal authenticated DAST
+      reportDescription: Spider + active scan as livingdevops after form login
+    risks:
+      - high
+      - medium
+      - low
+      - info
+    confidences:
+      - high
+      - medium
+      - low
+      - confirmed
+
+  - type: report
+    parameters:
+      template: sarif-json
+      reportDir: /zap/wrk/
+      reportFile: zap-auth-report
+      reportTitle: Student Portal authenticated DAST
+    risks:
+      - high
+      - medium
+      - low
+      - info
+    confidences:
+      - high
+      - medium
+      - low
+      - confirmed
+
+  - type: exitStatus
+    parameters:
+      errorLevel: High
+      warnLevel: Medium

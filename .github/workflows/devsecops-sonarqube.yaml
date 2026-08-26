@@ -1,15 +1,12 @@
 name: DevSecOps SonarQube
-# Scan the Flask portal (devsecops/src) against self-hosted SonarQube on EC2.
+# Scan the Flask portal against self-hosted SonarQube on EC2.
 #
-# Before Run workflow, set these in the repo:
-#   Settings → Secrets and variables → Actions
-#     Secret   SONAR_TOKEN      = analysis token from SonarQube (My Account → Security)
-#     Variable SONAR_HOST_URL   = http://<ec2-public-ip>:9000   (no trailing slash)
-#   You can also store SONAR_HOST_URL as a secret; the job accepts either.
+# Repo Settings → Secrets and variables → Actions
+#   Secret   SONAR_TOKEN      = User Token from SonarQube (My Account → Security)
+#   Secret   SONAR_HOST_URL   = http://<ec2-public-ip>:9000   (no trailing slash)
+# Variables with the same names also work.
 #
-# Also required on the EC2 box:
-#   - SonarQube UP at that URL (security group TCP 9000 open to the internet for this lab)
-#   - Project key student-portal created (matches sonar-project.properties)
+# sonar-project.properties lives at devsecops/src (project key: studnet-portal)
 
 on:
   # pull_request:
@@ -28,7 +25,7 @@ on:
 env:
   PYTHON_VERSION: '3.13'
   CODE_PATH: devsecops/src
-  SONAR_PROJECT_KEY: student-portal
+  SONAR_PROJECT_KEY: studnet-portal
 
 permissions:
   contents: read
@@ -38,31 +35,48 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # Official docs store the URL as a variable; secret still works.
-      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN || vars.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL || vars.SONAR_HOST_URL }}
 
     steps:
-      - name: Check SonarQube credentials
+      - name: Check SONAR_TOKEN and SONAR_HOST_URL
         run: |
-          if [ -z "${SONAR_TOKEN}" ]; then
-            echo "::error::Missing secret SONAR_TOKEN. In SonarQube: My Account → Security → generate an analysis token. In GitHub: Settings → Secrets and variables → Actions → New repository secret."
+          TOKEN="$(printf '%s' "${SONAR_TOKEN}" | tr -d '[:space:]')"
+          URL="$(printf '%s' "${SONAR_HOST_URL}" | tr -d '[:space:]')"
+          URL="${URL%/}"
+
+          if [ -z "${URL}" ]; then
+            echo "::error::SONAR_HOST_URL is empty. Add a repository secret (or variable) named SONAR_HOST_URL = http://<ec2-public-ip>:9000 with no trailing slash."
             exit 1
           fi
-          if [ -z "${SONAR_HOST_URL}" ]; then
-            echo "::error::Missing SONAR_HOST_URL. Add a repository variable (or secret) named SONAR_HOST_URL with value http://<ec2-public-ip>:9000 (no trailing slash)."
+          if [ -z "${TOKEN}" ]; then
+            echo "::error::SONAR_TOKEN is empty. That causes HTTP 401. Add a Repository secret named SONAR_TOKEN (Secrets tab, not an Environment secret)."
             exit 1
           fi
-          # scanners reject a trailing slash
-          CLEAN_URL="${SONAR_HOST_URL%/}"
-          echo "SONAR_HOST_URL=${CLEAN_URL}" >> "${GITHUB_ENV}"
-          echo "Using SONAR_HOST_URL=${CLEAN_URL}"
-          echo "Checking SonarQube is reachable..."
-          if ! curl -fsS --max-time 15 "${CLEAN_URL}/api/system/status"; then
-            echo "::error::Cannot reach ${CLEAN_URL}. Confirm SonarQube is UP and EC2 security group allows inbound TCP 9000 from the internet (GitHub-hosted runners)."
+
+          echo "SONAR_TOKEN=${TOKEN}" >> "${GITHUB_ENV}"
+          echo "SONAR_HOST_URL=${URL}" >> "${GITHUB_ENV}"
+          echo "SONAR_HOST_URL=${URL}"
+          echo "SONAR_TOKEN length=${#TOKEN} prefix=${TOKEN:0:4}"
+
+          if ! curl -fsS --max-time 15 "${URL}/api/system/status"; then
+            echo "::error::Cannot reach ${URL}. Confirm SonarQube is UP and security group allows inbound TCP 9000 from GitHub-hosted runners."
             exit 1
           fi
           echo
+
+          HTTP_CODE="$(curl -sS -o /tmp/sonar-auth.json -w "%{http_code}" \
+            --max-time 20 \
+            -u "${TOKEN}:" \
+            "${URL}/api/authentication/validate" || true)"
+          echo "GET /api/authentication/validate → HTTP ${HTTP_CODE}"
+          cat /tmp/sonar-auth.json || true
+          echo
+
+          if [ "${HTTP_CODE}" != "200" ] || ! grep -q '"valid":true' /tmp/sonar-auth.json; then
+            echo "::error::SonarQube rejected SONAR_TOKEN (HTTP ${HTTP_CODE}). Generate a User Token in SonarQube (My Account → Security) and paste only the token into the GitHub secret."
+            exit 1
+          fi
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,13 +100,14 @@ jobs:
           test -f coverage.xml
 
       - name: SonarQube scan
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
         with:
           projectBaseDir: ${{ env.CODE_PATH }}
           args: >
+            -Dsonar.host.url=${{ env.SONAR_HOST_URL }}
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.python.coverage.reportPaths=coverage.xml
 

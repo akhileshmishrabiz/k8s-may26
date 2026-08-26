@@ -1,0 +1,9 @@
+10015	IGNORE	(Included in Scripts) Found in PASSIVE responses
+10020	WARN	(X-Frame-Options Header Missing) Track but do not fail baseline on missing security headers in dev
+10021	WARN	(X-Content-Type-Options Header Missing)
+10035	WARN	(Strict-Transport-Security Header Not Set) Expected without TLS in CI
+10036	WARN	(Server Leaks Version Information via Server HTTP Response Header Field)
+10038	WARN	(Content Security Policy (CSP) Header Not Set)
+10055	WARN	(CSP: Wildcard Directive)
+10096	WARN	(Timestamp Disclosure)
+10109	WARN	(Modern Web Application)

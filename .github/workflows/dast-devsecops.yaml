@@ -76,7 +76,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: ${{ env.DAST_TARGET }}
-          rules_file_name: .zap/rules.tsv
+          rules_file_name: devsecops/src/.zap/rules.tsv
           cmd_options: -a -I
           allow_issue_writing: true
           issue_title: "DAST Baseline — ${{ github.event.pull_request.number || github.ref_name }}"
@@ -141,7 +141,7 @@ jobs:
           DAST_USERNAME: ${{ env.DAST_USERNAME }}
           DAST_PASSWORD: ${{ env.DAST_PASSWORD }}
         with:
-          plan: .github/workflows/zap/plan.yml
+          plan: .github/workflows/zap/plan.yaml
           docker_env_vars: |
             DAST_TARGET
             DAST_USERNAME

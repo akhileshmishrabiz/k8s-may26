@@ -12,21 +12,55 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
-    
+    env:
+      # secret preferred; variable works if that is where you stored them
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN || vars.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL || vars.SONAR_HOST_URL }}
+
     steps:
-      - uses: actions/checkout@v4 # v4.3.1
+      - name: Check SONAR_TOKEN and SONAR_HOST_URL
+        run: |
+          TOKEN="$(printf '%s' "${SONAR_TOKEN}" | tr -d '[:space:]')"
+          URL="$(printf '%s' "${SONAR_HOST_URL}" | tr -d '[:space:]')"
+          URL="${URL%/}"
+
+          if [ -z "${URL}" ]; then
+            echo "::error::SONAR_HOST_URL is empty. Repo Settings → Secrets and variables → Actions → Secrets. Name: SONAR_HOST_URL. Value: http://<ec2-public-ip>:9000 (no trailing slash)."
+            exit 1
+          fi
+          if [ -z "${TOKEN}" ]; then
+            echo "::error::SONAR_TOKEN is empty. That is what causes HTTP 401. Create a Repository secret named SONAR_TOKEN (Secrets tab, not Variables, not an Environment secret)."
+            exit 1
+          fi
+
+          echo "SONAR_TOKEN=${TOKEN}" >> "${GITHUB_ENV}"
+          echo "SONAR_HOST_URL=${URL}" >> "${GITHUB_ENV}"
+          echo "SONAR_HOST_URL=${URL}"
+          echo "SONAR_TOKEN length=${#TOKEN} prefix=${TOKEN:0:4}"
+
+          HTTP_CODE="$(curl -sS -o /tmp/sonar-auth.json -w "%{http_code}" \
+            --max-time 20 \
+            -u "${TOKEN}:" \
+            "${URL}/api/authentication/validate" || true)"
+          echo "GET /api/authentication/validate → HTTP ${HTTP_CODE}"
+          cat /tmp/sonar-auth.json || true
+          echo
+
+          if [ "${HTTP_CODE}" != "200" ] || ! grep -q '"valid":true' /tmp/sonar-auth.json; then
+            echo "::error::SonarQube rejected SONAR_TOKEN (HTTP ${HTTP_CODE}). In SonarQube: avatar → My Account → Security → Generate Token → type User Token. Paste only the token into GitHub secret SONAR_TOKEN (no quotes)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0
+
       - uses: SonarSource/sonarqube-scan-action@v8
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
         with:
-          # folder that contains sonar-project.properties
           projectBaseDir: devsecops/src
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: SonarSource/sonarqube-quality-gate-action@cf038b0e0cdecfa9e56c198bbb7d21d751d62c3b # v1.2.0
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          args: >
+            -Dsonar.host.url=${{ env.SONAR_HOST_URL }}
+            -Dsonar.projectKey=studnet-portal
