@@ -18,7 +18,7 @@ DEFAULT_REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "medium")
 
 PREFERRED_PYTHON_IMAGE = os.environ.get(
     "PREFERRED_PYTHON_IMAGE",
-    "python:3.13-slim-bookworm",
+    "python:3.14-slim",
 )
 
 SYSTEM_PROMPT = """\
