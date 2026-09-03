@@ -16,7 +16,7 @@ RUN apt-get update \
 
 COPY src/requirements.txt ./requirements.txt
 
-RUN python -m pip install --upgrade \
+RUN python -m pip install --no-cache-dir \
     -r requirements.txt \
     jaraco.context==6.1.0 \
     wheel==0.46.2
