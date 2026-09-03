@@ -12,3 +12,4 @@ python-json-logger
 gunicorn              
 pytest
 pytest-cov
+openai>=1.40.0
