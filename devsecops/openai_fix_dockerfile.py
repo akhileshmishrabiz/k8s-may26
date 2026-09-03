@@ -12,7 +12,7 @@ from pathlib import Path
 from openai import OpenAI
 
 
-DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6-luna")
 DEFAULT_TEMPERATURE = float(os.environ.get("OPENAI_TEMPERATURE", "0.1"))
 PREFERRED_PYTHON_IMAGE = os.environ.get(
     "PREFERRED_PYTHON_IMAGE",
