@@ -1,18 +1,22 @@
-FROM python:3.13-slim-bookworm
+FROM python:3.13.13-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY src/requirements.txt requirements.txt
-RUN pip install --no-cache-dir --upgrade jaraco.context==6.1.0 wheel==0.46.2 msgpack==1.2.1 setuptools==78.1.1 -r requirements.txt && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN adduser --disabled-password --gecos "" appuser
 
-COPY src/ src/
+COPY src/requirements.txt ./requirements.txt
 
-RUN adduser --disabled-password --gecos '' appuser && \
-    chown -R appuser /app
+RUN python -m pip install --no-cache-dir --upgrade \
+        -r requirements.txt \
+        jaraco.context==6.1.0 \
+        msgpack==1.2.1 \
+        setuptools==78.1.1 \
+        wheel==0.46.2
+
+COPY --chown=appuser:appuser src/ ./src/
 
 USER appuser
 
