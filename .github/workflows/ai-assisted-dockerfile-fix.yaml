@@ -1,0 +1,129 @@
+---
+name: Container Image Auto-Fixer
+
+on:
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - devsecops/**
+  workflow_dispatch:
+  # schedule:
+  #   # Weekly scan — Monday 06:00 UTC
+  #   - cron: "0 6 * * 1"
+
+env:
+  PROJECT_DIR: devsecops
+  IMAGE_NAME: container-image-fixer-demo
+  SCAN_RESULTS_FILE: scan-results.json
+
+jobs:
+  scan-and-fix:
+    runs-on: ubuntu-latest
+    # # Avoid re-trigger loops when the bot pushes an auto-fix commit.
+    # if: >-
+    #   github.event_name != 'push' ||
+    #   !contains(github.event.head_commit.message, '[skip ci]')
+    permissions:
+      contents: write
+      id-token: write
+
+    defaults:
+      run:
+        working-directory: devsecops
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+
+      - name: Scan image with Trivy (OS + library)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: json
+          output: ${{ env.PROJECT_DIR }}/${{ env.SCAN_RESULTS_FILE }}
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+
+      - name: Summarize scan findings
+        id: scan
+        run: |
+          SUMMARY_FILE=scan-summary.json
+          jq '[.Results[]? | {
+            Target: .Target,
+            Class: .Class,
+            Vulnerabilities: [
+              .Vulnerabilities[]? | {
+                VulnerabilityID,
+                PkgName,
+                InstalledVersion,
+                FixedVersion,
+                Severity,
+                Title
+              }
+            ]
+          } | select(.Vulnerabilities | length > 0)]' \
+            "${{ env.SCAN_RESULTS_FILE }}" > "$SUMMARY_FILE"
+
+          VULN_COUNT=$(jq '[.[].Vulnerabilities[]] | length' "$SUMMARY_FILE")
+          echo "vuln_count=$VULN_COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            echo "Found $VULN_COUNT vulnerabilities (CRITICAL/HIGH/MEDIUM)."
+            jq . "$SUMMARY_FILE"
+          else
+            echo "No actionable vulnerabilities found."
+          fi
+
+      - name: Fix Dockerfile with OpenAI
+        if: steps.scan.outputs.vuln_count != '0'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-4o-mini
+          OPENAI_TEMPERATURE: "0.1"
+          PREFERRED_PYTHON_IMAGE: python:3.13-slim
+          DOCKERFILE_PATH: Dockerfile
+          SCAN_RESULTS_FILE: scan-summary.json
+        run: |
+          python3 -m pip install --quiet -r requirements.txt
+          python3 openai_fix_dockerfile.py
+
+      - name: Validate fixed Dockerfile builds
+        id: validate
+        if: steps.scan.outputs.vuln_count != '0'
+        run: |
+          if docker build -t ${{ env.IMAGE_NAME }}-fixed:verify .; then
+            echo "build_ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_ok=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Fixed Dockerfile failed to build; skipping commit."
+            git checkout -- Dockerfile
+            exit 1
+          fi
+
+      - name: Commit and push Dockerfile fix
+        if: steps.scan.outputs.vuln_count != '0' && steps.validate.outputs.build_ok == 'true'
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- "${{ env.PROJECT_DIR }}/Dockerfile"; then
+            echo "Dockerfile unchanged after AI fix attempt; nothing to push."
+            exit 0
+          fi
+
+          git add "${{ env.PROJECT_DIR }}/Dockerfile"
+          git commit \
+            -m "fix(container-image-fixer): auto-fix Dockerfile from Trivy scan findings [skip ci]" \
+            -m "Automated update from container-image-fixer workflow based on Trivy OS and library scan results."
+          git push
