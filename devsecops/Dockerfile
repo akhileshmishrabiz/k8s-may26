@@ -9,19 +9,17 @@ WORKDIR /app
 
 RUN apt-get update \
     && apt-get dist-upgrade -y \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
     && addgroup --system appuser \
-    && adduser --system --ingroup appuser --no-create-home appuser
+    && adduser --system --ingroup appuser --no-create-home appuser \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY src/requirements.txt ./requirements.txt
 
 RUN python -m pip install --upgrade \
-        -r requirements.txt \
-        jaraco.context==6.1.0 \
-        msgpack==1.2.1 \
-        setuptools==78.1.1 \
-        wheel==0.46.2
+    -r requirements.txt \
+    jaraco.context==6.1.0 \
+    wheel==0.46.2
 
 COPY --chown=appuser:appuser src/ ./src/
 
