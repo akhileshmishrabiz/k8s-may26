@@ -94,7 +94,7 @@ jobs:
           DOCKERFILE_PATH: Dockerfile
           SCAN_RESULTS_FILE: scan-summary.json
         run: |
-          python3 -m pip install --quiet -r requirements.txt
+          python3 -m pip install --quiet -r src/requirements.txt
           python3 openai_fix_dockerfile.py
 
       - name: Validate fixed Dockerfile builds
