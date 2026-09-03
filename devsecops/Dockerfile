@@ -1,16 +1,18 @@
-FROM python:3.13.13-slim-bookworm
+FROM python:3.13.13-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get upgrade -y \
+    && apt-get dist-upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && adduser --disabled-password --gecos "" appuser
+    && addgroup --system appuser \
+    && adduser --system --ingroup appuser --no-create-home appuser
 
 COPY src/requirements.txt ./requirements.txt
 
