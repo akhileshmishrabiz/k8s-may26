@@ -1,15 +1,20 @@
 FROM python:3.13.13-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-RUN adduser --disabled-password --gecos "" appuser
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && adduser --disabled-password --gecos "" appuser
 
 COPY src/requirements.txt ./requirements.txt
 
-RUN python -m pip install --no-cache-dir --upgrade \
+RUN python -m pip install --upgrade \
         -r requirements.txt \
         jaraco.context==6.1.0 \
         msgpack==1.2.1 \
