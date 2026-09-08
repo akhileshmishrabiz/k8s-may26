@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: triage-dashboard
+  namespace: incident-triage
+  labels:
+    app: triage-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: triage-dashboard
+  namespace: incident-triage
+  labels:
+    app: triage-dashboard
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: triage-dashboard
+  namespace: incident-triage
+  labels:
+    app: triage-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: triage-dashboard
+subjects:
+  - kind: ServiceAccount
+    name: triage-dashboard
+    namespace: incident-triage

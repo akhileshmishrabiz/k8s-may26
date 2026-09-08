@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triage-dashboard
+  namespace: incident-triage
+  labels:
+    app: triage-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triage-dashboard
+  template:
+    metadata:
+      labels:
+        app: triage-dashboard
+    spec:
+      serviceAccountName: triage-dashboard
+      containers:
+        - name: triage-dashboard
+          image: incident-triage/dashboard:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NAMESPACE
+              value: incident-triage
+            - name: OPENAI_MODEL
+              value: gpt-4o-mini
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-api-key
+                  key: OPENAI_API_KEY
+            - name: CATALOG_SERVICE_URL
+              value: http://catalog-service:5001
+            - name: ORDERS_SERVICE_URL
+              value: http://orders-service:5002
+            - name: INVENTORY_SERVICE_URL
+              value: http://inventory-service:5003
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triage-dashboard
+  namespace: incident-triage
+  labels:
+    app: triage-dashboard
+spec:
+  type: NodePort
+  selector:
+    app: triage-dashboard
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      nodePort: 30080

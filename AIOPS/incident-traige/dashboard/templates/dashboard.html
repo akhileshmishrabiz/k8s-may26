@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="15">
+  <title>Incident Triage Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>🔍 Incident Triage Dashboard</h1>
+    <div>
+      <span class="badge {% if health.overall == 'healthy' %}badge-healthy{% else %}badge-unhealthy{% endif %}">
+        {{ health.overall | upper }}
+      </span>
+      <span class="refresh-note">auto-refresh 15s</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="grid">
+        {% for name, svc in health.services.items() %}
+        <div class="card status-{{ svc.status }}">
+          <h2>{{ name }}</h2>
+          <div class="metric"><span>Status</span><span>{{ svc.status }}</span></div>
+          {% if svc.health %}
+          <div class="metric"><span>/health</span><span>{{ svc.health.status_code | default('err') }}</span></div>
+          {% endif %}
+          {% if svc.ready %}
+          <div class="metric"><span>/ready</span><span>{{ svc.ready.status_code | default('err') }}</span></div>
+          {% endif %}
+          {% if svc.latency_ms %}
+          <div class="metric"><span>Latency</span><span>{{ svc.latency_ms.values() | list | join(' / ') }} ms</span></div>
+          {% endif %}
+          {% if svc.errors %}
+          <pre>{% for e in svc.errors %}{{ e }}
+{% endfor %}</pre>
+          {% endif %}
+          {% set pods = k8s.pods.get(name, []) %}
+          {% if pods and pods[0].name is defined %}
+          <div class="metric"><span>Pod</span><span>{{ pods[0].phase }} ({{ pods[0].restarts }} restarts)</span></div>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        {% set pg = k8s.deployments.get('postgres', {}) %}
+        <div class="card status-{% if pg.ready_replicas | default(0) >= 1 %}healthy{% else %}unhealthy{% endif %}">
+          <h2>postgres (StatefulSet)</h2>
+          {% if pg.error %}
+          <div class="metric"><span>Error</span><span>{{ pg.error }}</span></div>
+          {% endif %}
+          <div class="metric"><span>Ready</span><span>{{ pg.ready_replicas | default(0) }}/{{ pg.replicas | default(1) }}</span></div>
+          {% set pgpods = k8s.pods.get('postgres', []) %}
+          {% if pgpods and pgpods[0].name is defined %}
+          <div class="metric"><span>Pod</span><span>{{ pgpods[0].phase }}</span></div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section class="section grid">
+      <div class="card">
+        <h3>AI Triage</h3>
+        {% if ai_available %}
+        <p style="color:#6ee7b7;font-size:0.85rem">OpenAI connected ({{ 'gpt-4o-mini' }})</p>
+        {% else %}
+        <p style="color:#fbbf24;font-size:0.85rem">OpenAI not configured — using rule-based analysis</p>
+        {% endif %}
+        <form action="/api/triage" method="post" style="display:inline">
+          <button type="submit" class="btn">Run AI Triage</button>
+        </form>
+        <form action="/api/triage/fix" method="post" style="display:inline">
+          <button type="submit" class="btn btn-success">Diagnose &amp; Auto-Fix</button>
+        </form>
+        {% if last_triage and last_triage.remediation_actions %}
+        <form action="/api/remediate/ai-fix" method="post" style="display:inline">
+          <button type="submit" class="btn">Apply AI Fix</button>
+        </form>
+        {% endif %}
+        {% if last_triage %}
+        <div class="triage-result">
+          <p><strong>{{ last_triage.summary }}</strong></p>
+          <p class="severity severity-{{ last_triage.severity }}">Severity: {{ last_triage.severity }} ({{ last_triage.confidence }} confidence)</p>
+          <p><strong>Root cause:</strong> {{ last_triage.root_cause }}</p>
+          {% if last_triage.evidence %}
+          <p><strong>Evidence:</strong></p>
+          <ul class="steps">{% for e in last_triage.evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+          {% endif %}
+          <p><strong>Remediation:</strong></p>
+          <ul class="steps">{% for s in last_triage.remediation_steps %}<li>{{ s }}</li>{% endfor %}</ul>
+          {% if last_triage.remediation_actions %}
+          <p><strong>Automated actions:</strong></p>
+          <ul class="steps">{% for a in last_triage.remediation_actions %}<li>{{ a.action }} → {{ a.deployment | default('all') }}{% if a.env %} ({{ a.env }}){% endif %}</li>{% endfor %}</ul>
+          {% endif %}
+          {% if last_fix.results %}
+          <p style="color:#6ee7b7"><strong>Fix applied:</strong> health now {{ last_fix.health_after | default('checking...') }}</p>
+          {% endif %}
+          {% if last_triage.mode %}<p style="font-size:0.8rem;color:#64748b">Mode: {{ last_triage.mode }}</p>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h3>Quick Remediation</h3>
+        {% for dep in ['catalog-service', 'orders-service', 'inventory-service'] %}
+        <div style="margin-bottom:0.5rem">
+          <strong>{{ dep }}</strong>
+          <form style="display:inline" action="/api/remediate/apply" method="post">
+            <input type="hidden" name="deployment" value="{{ dep }}">
+            <input type="hidden" name="action" value="restart">
+            <button class="btn btn-sm" type="submit">Restart</button>
+          </form>
+          <form style="display:inline" action="/api/remediate/apply" method="post">
+            <input type="hidden" name="deployment" value="{{ dep }}">
+            <input type="hidden" name="action" value="reset_env">
+            <button class="btn btn-sm btn-success" type="submit">Reset Env</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section card">
+      <h3>Failure Injection (Chaos)</h3>
+      {% if active_injections %}
+      <p style="color:#fbbf24">Active: {{ active_injections | join(', ') }}</p>
+      {% endif %}
+      <form action="/api/chaos/reset" method="post" style="margin-bottom:1rem">
+        <button type="submit" class="btn btn-success">Reset All to Healthy</button>
+      </form>
+      <div class="chaos-grid">
+        {% for id, spec in injections.items() %}
+        <div class="chaos-item">
+          <strong>{{ spec.label }}</strong>
+          <p>{{ spec.description }}</p>
+          <form action="/api/chaos/inject" method="post">
+            <input type="hidden" name="injection_id" value="{{ id }}">
+            <button type="submit" class="btn btn-danger btn-sm">Inject</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section card">
+      <h3>Recent Incidents</h3>
+      {% if incidents %}
+      <ul class="incident-list">
+        {% for inc in incidents[:10] %}
+        <li>{{ inc.service }} — {{ inc.status }} — {{ inc.errors | join('; ') }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p style="color:#64748b">No incidents recorded yet.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>
