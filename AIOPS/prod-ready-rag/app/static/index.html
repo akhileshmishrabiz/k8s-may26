@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG Demo</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #111827;
+      --border: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+      --user: #1d4ed8;
+      --bot: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: linear-gradient(180deg, #020617, #0f172a);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    h1 { margin: 0; font-size: 1.5rem; }
+    .status {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      backdrop-filter: blur(8px);
+    }
+    #chat {
+      height: 460px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .msg {
+      padding: 12px 14px;
+      border-radius: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--user);
+      max-width: 85%;
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      max-width: 90%;
+    }
+    .sources {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .source {
+      border-left: 3px solid var(--accent);
+      padding-left: 8px;
+      margin-top: 8px;
+    }
+    form {
+      display: flex;
+      gap: 8px;
+    }
+    input[type="text"], input[type="file"] {
+      flex: 1;
+      background: #020617;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    button {
+      background: var(--accent);
+      color: #082f49;
+      border: none;
+      border-radius: 10px;
+      padding: 0 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    ul { padding-left: 18px; margin: 8px 0 0; }
+    li { margin-bottom: 6px; }
+    .hint { color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>RAG Demo</h1>
+        <div class="status" id="status">Loading...</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;font-size:0.85rem;">
+        <a href="http://localhost:3000" target="_blank" style="color:var(--accent);text-decoration:none;">Grafana</a>
+        <a href="http://localhost:16686" target="_blank" style="color:var(--accent);text-decoration:none;">Jaeger</a>
+        <a href="http://localhost:9090" target="_blank" style="color:var(--accent);text-decoration:none;">Prometheus</a>
+        <a href="/docs" style="color:var(--accent);text-decoration:none;">API Docs</a>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <div id="chat"></div>
+        <form id="query-form">
+          <input id="question" type="text" placeholder="Ask about the indexed docs..." required />
+          <button type="submit" id="ask-btn">Ask</button>
+        </form>
+      </section>
+
+      <aside class="panel">
+        <h3 style="margin-top:0;">Upload</h3>
+        <p class="hint">Supported: .txt, .md, .pdf</p>
+        <form id="upload-form">
+          <input id="file" type="file" accept=".txt,.md,.markdown,.pdf" required />
+          <button type="submit" style="margin-top:8px; width:100%;">Upload</button>
+        </form>
+        <h3>Indexed documents</h3>
+        <ul id="docs"></ul>
+        <h3>Try asking</h3>
+        <ul>
+          <li><a href="#" class="sample" data-q="How do I debug a CrashLoopBackOff pod?">CrashLoopBackOff debugging</a></li>
+          <li><a href="#" class="sample" data-q="What steps are in the incident triage runbook?">Incident triage steps</a></li>
+          <li><a href="#" class="sample" data-q="How does Kubernetes service discovery work?">Service discovery</a></li>
+        </ul>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const statusEl = document.getElementById('status');
+    const docsEl = document.getElementById('docs');
+    const askBtn = document.getElementById('ask-btn');
+
+    function addMessage(text, role, sources = []) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.textContent = text;
+
+      if (sources.length) {
+        const src = document.createElement('div');
+        src.className = 'sources';
+        src.innerHTML = '<strong>Sources</strong>';
+        sources.forEach((s, i) => {
+          const item = document.createElement('div');
+          item.className = 'source';
+          item.textContent = `${i + 1}. ${s.source} (chunk ${s.chunk_index}, score ${s.score})`;
+          src.appendChild(item);
+        });
+        div.appendChild(src);
+      }
+
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function refreshHealth() {
+      const res = await fetch('/health');
+      const data = await res.json();
+      statusEl.textContent = `${data.documents} documents · ${data.chunks} chunks indexed`;
+    }
+
+    async function refreshDocs() {
+      const res = await fetch('/documents');
+      const data = await res.json();
+      docsEl.innerHTML = '';
+      if (!data.length) {
+        docsEl.innerHTML = '<li>No documents yet</li>';
+        return;
+      }
+      data.forEach(doc => {
+        const li = document.createElement('li');
+        li.textContent = `${doc.source} (${doc.chunks} chunks)`;
+        docsEl.appendChild(li);
+      });
+    }
+
+    document.getElementById('query-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('question');
+      const question = input.value.trim();
+      if (!question) return;
+
+      addMessage(question, 'user');
+      input.value = '';
+      askBtn.disabled = true;
+
+      try {
+        const res = await fetch('/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Query failed');
+        addMessage(data.answer, 'bot', data.sources || []);
+      } catch (err) {
+        addMessage(`Error: ${err.message}`, 'bot');
+      } finally {
+        askBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('file');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const form = new FormData();
+      form.append('file', file);
+
+      try {
+        const res = await fetch('/documents/upload', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+        addMessage(`Uploaded ${data.source} (${data.chunks} chunks)`, 'bot');
+        fileInput.value = '';
+        await refreshHealth();
+        await refreshDocs();
+      } catch (err) {
+        addMessage(`Upload error: ${err.message}`, 'bot');
+      }
+    });
+
+    document.querySelectorAll('.sample').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('question').value = link.dataset.q;
+        document.getElementById('query-form').requestSubmit();
+      });
+    });
+
+    refreshHealth();
+    refreshDocs();
+    addMessage('Ask a question about the indexed Kubernetes docs, or upload your own file.', 'bot');
+  </script>
+</body>
+</html>

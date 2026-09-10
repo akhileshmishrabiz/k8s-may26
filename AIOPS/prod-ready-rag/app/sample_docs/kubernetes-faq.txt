@@ -1,0 +1,53 @@
+Kubernetes Troubleshooting FAQ
+===============================
+
+CrashLoopBackOff
+----------------
+A pod in CrashLoopBackOff means the container starts, exits with a non-zero code, and Kubernetes keeps restarting it with exponential backoff.
+
+Common causes:
+1. Application crash on startup (missing env vars, bad config, dependency unavailable)
+2. Wrong command or entrypoint in the container image
+3. Liveness probe killing the container too aggressively
+4. Insufficient memory causing OOMKill
+
+Debugging steps:
+1. kubectl describe pod <pod-name> - check Events and Last State
+2. kubectl logs <pod-name> --previous - logs from the crashed container
+3. kubectl get events --sort-by=.lastTimestamp
+4. Verify ConfigMaps, Secrets, and environment variables referenced by the pod
+5. Check resource limits - increase memory if OOMKilled
+
+ImagePullBackOff
+----------------
+The node cannot pull the container image.
+
+Check:
+- Image name and tag are correct
+- imagePullSecrets exist for private registries
+- Registry credentials are valid
+- Network connectivity from the node to the registry
+
+Service Discovery
+-----------------
+Kubernetes services provide stable DNS names inside the cluster.
+
+- ClusterIP services get a DNS record: <service>.<namespace>.svc.cluster.local
+- kube-dns or CoreDNS resolves service names to ClusterIP
+- Environment variables like MY_SERVICE_HOST and MY_SERVICE_PORT are injected into pods (legacy, prefer DNS)
+
+For cross-namespace access use the full DNS name including namespace.
+
+Readiness vs Liveness Probes
+----------------------------
+- Liveness: restart the container if it fails (app is dead)
+- Readiness: remove pod from Service endpoints if it fails (app not ready to serve traffic)
+
+A misconfigured liveness probe can cause CrashLoopBackOff if it fails during normal startup time.
+
+Useful Commands
+---------------
+kubectl get pods -A
+kubectl logs -f deployment/<name>
+kubectl exec -it <pod> -- /bin/sh
+kubectl port-forward svc/<service> 8080:80

@@ -1,0 +1,11 @@
+What is a Kubernetes Pod?
+A Pod is the smallest deployable unit in Kubernetes. It wraps one or more containers that share storage and network.
+
+Why is my Pod stuck in Pending?
+Common causes include insufficient cluster CPU or memory, missing PersistentVolumeClaims, or node selectors and taints that no node satisfies.
+
+How do I debug CrashLoopBackOff?
+Run kubectl logs on the pod (and kubectl logs --previous if it restarted). Check liveness probes, missing environment variables, and image pull errors.
+
+What is a Deployment?
+A Deployment manages ReplicaSets and provides declarative updates for Pods, including rolling updates and rollbacks.
